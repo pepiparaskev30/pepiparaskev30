@@ -31,29 +31,33 @@ app = FastAPI()
 class ScaleRequest(BaseModel):
     action: str
     prefix: str
-    namespace: str = "default"
-    replicas: int = 3
+    namespace: str 
+    replicas: int 
 
 
 
 # Kubernetes API client setup
 def scale_deployment(namespace: str, deployment_name: str, replicas: int):
     try:
+        print("error:0")
         # Load kube config from within the pod
         config.load_incluster_config()
+        print("error:1")
 
         # Create an instance of the AppsV1Api
         apps_v1 = client.AppsV1Api()
-
+        print("error:2")
         # Get the current deployment
         deployment = apps_v1.read_namespaced_deployment(deployment_name, namespace)
+        print("error:3")
 
         # Update the replica count
         deployment.spec.replicas = replicas
+        print("error:4")
 
         # Apply the updated deployment
         apps_v1.replace_namespaced_deployment(deployment_name, namespace, deployment)
-
+        print("error:5")
         print(f"Deployment {deployment_name} scaled to {replicas} replicas.")
         return f"Deployment {deployment_name} scaled to {replicas} replicas."
 
