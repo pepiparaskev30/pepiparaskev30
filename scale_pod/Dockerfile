@@ -8,7 +8,7 @@ WORKDIR /app
 COPY scale_pod.py /app/
 
 # Install the required dependencies (FastAPI, Uvicorn, and Kubernetes client)
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir fastapi uvicorn kubernetes
 
 # Expose port 8000 to access the FastAPI app
 EXPOSE 8001
