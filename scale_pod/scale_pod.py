@@ -14,8 +14,7 @@ class ScaleRequest(BaseModel):
     namespace: str = "default"
     replicas: int = 3
 
-# Regular expression to match host:port format (used later)
-_HOST_PORT_RE = re.compile(r'^(?P<host>[\w.-]+)(?::(?P<port>\d+))?$')
+
 
 # Kubernetes API client setup
 def scale_deployment(namespace: str, deployment_name: str, replicas: int):
