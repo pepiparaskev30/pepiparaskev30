@@ -1,14 +1,17 @@
-
-'''
-Script that scales within an API the number of replicas
-'''
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-import os
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Define the request body using Pydantic
+class ScaleRequest(BaseModel):
+    action: str
+    prefix: str
+    namespace: str = "default"
+    replicas: int = 3
 
 # Kubernetes API client setup
 def scale_deployment(namespace: str, deployment_name: str, replicas: int):
@@ -36,18 +39,18 @@ def scale_deployment(namespace: str, deployment_name: str, replicas: int):
         raise HTTPException(status_code=400, detail="Error scaling deployment")
 
 @app.post("/scale")
-async def scale_replicas(action: str, prefix: str, namespace: str = "default", replicas: int = 3):
-    if action != "scale":
+async def scale_replicas(request: ScaleRequest):
+    if request.action != "scale":
         raise HTTPException(status_code=400, detail="Invalid action. Use 'scale' to scale the deployment.")
     
     # Validate that prefix is one of the valid options (e.g., s1, s2, s3, ...)
-    valid_prefixes = [prefix]
-    if prefix not in valid_prefixes:
+    valid_prefixes = [request.prefix]
+    if request.prefix not in valid_prefixes:
         raise HTTPException(status_code=400, detail="Invalid prefix. Allowed values are: s1, s2, s3.")
     
     # Construct the deployment name
-    deployment_name = f"{prefix}-deployment"
+    deployment_name = f"{request.prefix}-deployment"
     
     # Call function to scale the deployment
-    result = scale_deployment(namespace, deployment_name, replicas)
+    result = scale_deployment(request.namespace, deployment_name, request.replicas)
     return {"message": result}
