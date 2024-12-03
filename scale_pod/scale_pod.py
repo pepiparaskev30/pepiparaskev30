@@ -4,6 +4,26 @@ from kubernetes import client, config
 from kubernetes.client.rest import ApiException
 import re
 
+
+
+import os
+import logging
+
+# Set up logging
+logging.basicConfig(level=logging.DEBUG)
+
+# Retrieve the Kubernetes environment variables
+kubernetes_host = os.getenv("KUBERNETES_SERVICE_HOST")
+kubernetes_port = os.getenv("KUBERNETES_SERVICE_PORT")
+
+# Log the environment variables
+logging.debug(f"Kubernetes API Server Host: {kubernetes_host}")
+logging.debug(f"Kubernetes API Server Port: {kubernetes_port}")
+
+# Optionally, you can also check the full set of environment variables to ensure the pod is correctly configured
+all_env_vars = os.environ
+logging.debug(f"All Environment Variables: {all_env_vars}")
+
 # Initialize FastAPI app
 app = FastAPI()
 
