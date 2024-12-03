@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
+import re
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -12,6 +13,9 @@ class ScaleRequest(BaseModel):
     prefix: str
     namespace: str = "default"
     replicas: int = 3
+
+# Regular expression to match host:port format (used later)
+_HOST_PORT_RE = re.compile(r'^(?P<host>[\w.-]+)(?::(?P<port>\d+))?$')
 
 # Kubernetes API client setup
 def scale_deployment(namespace: str, deployment_name: str, replicas: int):
@@ -38,19 +42,24 @@ def scale_deployment(namespace: str, deployment_name: str, replicas: int):
         print(f"Error scaling deployment: {e}")
         raise HTTPException(status_code=400, detail="Error scaling deployment")
 
+# FastAPI route to handle scaling requests
 @app.post("/scale")
 async def scale_replicas(request: ScaleRequest):
+    # Validate that action is "scale"
     if request.action != "scale":
         raise HTTPException(status_code=400, detail="Invalid action. Use 'scale' to scale the deployment.")
     
-    # Validate that prefix is one of the valid options (e.g., s1, s2, s3, ...)
-    valid_prefixes = [request.prefix]
+    # Validate that the prefix is in the expected format (s1, s2, s3, etc.)
+    valid_prefixes = ["s1", "s2", "s3"]  # List all valid prefixes
     if request.prefix not in valid_prefixes:
-        raise HTTPException(status_code=400, detail="Invalid prefix. Allowed values are: s1, s2, s3.")
-    
-    # Construct the deployment name
+        raise HTTPException(status_code=400, detail=f"Invalid prefix. Allowed values are: {', '.join(valid_prefixes)}.")
+
+    # Ensure the deployment name follows the format
     deployment_name = f"{request.prefix}-deployment"
-    
-    # Call function to scale the deployment
+    print(f"Scaling deployment: {deployment_name} in namespace {request.namespace} to {request.replicas} replicas.")
+
+    # Call the function to scale the deployment
     result = scale_deployment(request.namespace, deployment_name, request.replicas)
+
     return {"message": result}
+
