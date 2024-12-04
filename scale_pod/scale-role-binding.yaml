@@ -1,0 +1,13 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: scale-rolebinding
+  namespace: default  # Ensure this is the correct namespace
+subjects:
+  - kind: ServiceAccount
+    name: default  # You can specify a custom service account if you have one
+    namespace: default
+roleRef:
+  kind: Role
+  name: scale-role
+  apiGroup: rbac.authorization.k8s.io
