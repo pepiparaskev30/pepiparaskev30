@@ -17,7 +17,8 @@ class ScaleRequest(BaseModel):
 def load_k8s_config():
     try:
         # This will try to load the Kubernetes config from the default location
-        config.load_kube_config()  # for local development (like minikube)
+        config.load_kube_config()
+         # for local development (like minikube)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error loading Kubernetes config")
 
@@ -25,29 +26,25 @@ def load_k8s_config():
 def scale_deployment(prefix: str, namespace: str, replicas: int):
     # Load K8s config
     load_k8s_config()
-    
-    # Create an API client for the AppsV1 API
-    api = client.AppsV1Api()
+    k8s_apps_v1 = client.AppsV1Api()
     
     # Specify the deployment name (using prefix)
     deployment_name = f"{prefix}-deployment"
     
-    # Define the body of the scale request
-    body = {
-        "spec": {
-            "replicas": replicas
-        }
-    }
-
     try:
         # Make the API call to update the deployment replicas
-        api.patch_namespaced_deployment(name=deployment_name, namespace=namespace, body=body)
+        api_response = k8s_apps_v1.patch_namespaced_deployment_scale(
+            name=deployment_name, 
+            namespace=ScaleRequest.namespace, 
+            body={'spec': {'replicas': ScaleRequest.replicas}}
+)
         return {"message": f"Scaled {deployment_name} to {replicas} replicas"}
     except ApiException as e:
         raise HTTPException(status_code=400, detail=f"Error scaling deployment: {str(e)}")
 
 # Define the POST endpoint to scale deployments
 @app.post("/scale-deployment")
+
 async def scale_deployment_api(payload: ScaleRequest):
     if payload.action != "scale":
         raise HTTPException(status_code=400, detail="Action must be 'scale'")
