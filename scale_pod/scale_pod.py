@@ -2,10 +2,6 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
-import re
-
-
-
 import os
 import logging
 
@@ -20,10 +16,6 @@ kubernetes_port = os.getenv("KUBERNETES_SERVICE_PORT")
 logging.debug(f"Kubernetes API Server Host: {kubernetes_host}")
 logging.debug(f"Kubernetes API Server Port: {kubernetes_port}")
 
-# Optionally, you can also check the full set of environment variables to ensure the pod is correctly configured
-all_env_vars = os.environ
-logging.debug(f"All Environment Variables: {all_env_vars}")
-
 # Initialize FastAPI app
 app = FastAPI()
 
@@ -31,35 +23,34 @@ app = FastAPI()
 class ScaleRequest(BaseModel):
     action: str
     prefix: str
-    namespace: str 
-    replicas: int 
-
-
+    namespace: str
+    replicas: int
 
 # Kubernetes API client setup
 def scale_deployment(namespace: str, deployment_name: str, replicas: int):
     try:
-        print("error:0")
         # Load kube config from within the pod
         config.load_incluster_config()
-        print("error:1")
 
         # Create an instance of the AppsV1Api
         apps_v1 = client.AppsV1Api()
-        print("error:2")
-        # Get the current deployment
-        print(deployment_name)
-        print(namespace)
-        deployment = apps_v1.read_namespaced_deployment(deployment_name, namespace)
-        print("error:3")
 
-        # Update the replica count
-        deployment.spec.replicas = replicas
-        print("error:4")
+        # Print the deployment name and namespace for debugging
+        print(f"Scaling deployment: {deployment_name} in namespace {namespace} to {replicas} replicas.")
 
-        # Apply the updated deployment
-        apps_v1.replace_namespaced_deployment(deployment_name, namespace, deployment)
-        print("error:5")
+        # Use patch_namespaced_deployment_scale to scale the deployment
+        scale_body = {
+            'spec': {
+                'replicas': replicas
+            }
+        }
+        
+        # Call the API to patch the deployment scale
+        api_response = apps_v1.patch_namespaced_deployment_scale(
+            name=deployment_name,
+            namespace=namespace,
+            body=scale_body
+        )
         print(f"Deployment {deployment_name} scaled to {replicas} replicas.")
         return f"Deployment {deployment_name} scaled to {replicas} replicas."
 
@@ -75,7 +66,7 @@ async def scale_replicas(request: ScaleRequest):
         raise HTTPException(status_code=400, detail="Invalid action. Use 'scale' to scale the deployment.")
     
     # Validate that the prefix is in the expected format (s1, s2, s3, etc.)
-    valid_prefixes = ["s1", "s2", "s3"]  # List all valid prefixes
+    valid_prefixes = [request.prefix]  # List all valid prefixes
     if request.prefix not in valid_prefixes:
         raise HTTPException(status_code=400, detail=f"Invalid prefix. Allowed values are: {', '.join(valid_prefixes)}.")
 
@@ -87,4 +78,3 @@ async def scale_replicas(request: ScaleRequest):
     result = scale_deployment(request.namespace, deployment_name, request.replicas)
 
     return {"message": result}
-
