@@ -47,39 +47,6 @@ async def update_replicas(request: DeploymentRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
 
-
-@app.get("/generate_yaml")
-async def generate_yaml(request: DeploymentRequest):
-    """
-    Endpoint to generate YAML files for deployment, service, and roles.
-    """
-    deployment_name = f"{request.prefix}-deployment"
-    namespace = request.namespace
-
-    try:
-        # Fetch the deployment object
-        deployment = v1.read_namespaced_deployment(deployment_name, namespace)
-        
-        # Convert the deployment object to a YAML string
-        deployment_yaml = client.api_client.sanitize_for_serialization(deployment)
-        deployment_yaml_str = yaml.dump(deployment_yaml, default_flow_style=False)
-
-        # Save to a file (optional)
-        with open(f'{deployment_name}_updated.yaml', 'w') as f:
-            f.write(deployment_yaml_str)
-
-        # Generate and return the YAML string
-        return {
-            "message": f"YAML files generated for {deployment_name} in namespace {namespace}",
-            "deployment_yaml": deployment_yaml_str
-        }
-
-    except client.exceptions.ApiException as e:
-        raise HTTPException(status_code=e.status, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001)
