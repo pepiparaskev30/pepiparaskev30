@@ -15,7 +15,7 @@ spec:
         app: scale_pod
     spec:
       containers:
-        - name: scale_pod_container
+        - name: scale-pod-container
           image: pepi1989/scale-pod:v11  # Replace with your Docker image
           ports:
             - containerPort: 8001
