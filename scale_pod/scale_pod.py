@@ -48,6 +48,8 @@ def scale_deployment(namespace: str, deployment_name: str, replicas: int):
         apps_v1 = client.AppsV1Api()
         print("error:2")
         # Get the current deployment
+        print(deployment_name)
+        print(namespace)
         deployment = apps_v1.read_namespaced_deployment(deployment_name, namespace)
         print("error:3")
 
