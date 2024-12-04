@@ -8,13 +8,14 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)
 
+# Manually set the Minikube API server IP and port
+# (These values can be obtained from minikube ip and kubectl cluster-info)
+os.environ["KUBERNETES_SERVICE_HOST"] = "192.168.49.2"  # Replace with your Minikube IP
+os.environ["KUBERNETES_SERVICE_PORT"] = "8443"           # Default port for Kubernetes API
+
 # Retrieve the Kubernetes environment variables
 kubernetes_host = os.getenv("KUBERNETES_SERVICE_HOST")
 kubernetes_port = os.getenv("KUBERNETES_SERVICE_PORT")
-
-# Log the environment variables
-logging.debug(f"Kubernetes API Server Host: {kubernetes_host}")
-logging.debug(f"Kubernetes API Server Port: {kubernetes_port}")
 
 # Initialize FastAPI app
 app = FastAPI()
