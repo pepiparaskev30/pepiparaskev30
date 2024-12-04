@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  namespace: default  # Specify the namespace
-  name: scale-role
+  namespace: default  # The namespace where FastAPI app operates
+  name: fastapi-role
 rules:
-  - apiGroups: [""]
-    resources: ["pods", "services", "deployments"]
-    verbs: ["get", "list", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["deployments"]
+  verbs: ["get", "list", "patch", "update"]
