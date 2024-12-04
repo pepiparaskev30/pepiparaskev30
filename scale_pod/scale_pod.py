@@ -35,9 +35,11 @@ def scale_deployment(namespace: str, deployment_name: str, replicas: int):
         # Create an instance of the AppsV1Api
         apps_v1 = client.AppsV1Api()
 
+        
+        print("before error!")
         # Print the deployment name and namespace for debugging
         print(f"Scaling deployment: {deployment_name} in namespace {namespace} to {replicas} replicas.")
-
+        print("error!!!!")
         # Use patch_namespaced_deployment_scale to scale the deployment
         scale_body = {
             'spec': {
