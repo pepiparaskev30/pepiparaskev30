@@ -1,83 +1,85 @@
+import os
+import yaml
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from kubernetes import client, config
-from kubernetes.client.rest import ApiException
-import os
-import logging
 
-# Set up logging
-logging.basicConfig(level=logging.DEBUG)
+# Load Kubernetes configuration (assuming kubectl config is set)
+config.load_kube_config()
 
-# Manually set the Minikube API server IP and port
-# (These values can be obtained from minikube ip and kubectl cluster-info)
-os.environ["KUBERNETES_SERVICE_HOST"] = "192.168.49.2"  # Replace with your Minikube IP
-os.environ["KUBERNETES_SERVICE_PORT"] = "8443"           # Default port for Kubernetes API
-
-# Retrieve the Kubernetes environment variables
-kubernetes_host = os.getenv("KUBERNETES_SERVICE_HOST")
-kubernetes_port = os.getenv("KUBERNETES_SERVICE_PORT")
-
-# Initialize FastAPI app
+# FastAPI app initialization
 app = FastAPI()
 
-# Define the request body using Pydantic
-class ScaleRequest(BaseModel):
-    action: str
+# Kubernetes API client
+v1 = client.AppsV1Api()
+v1_core = client.CoreV1Api()
+
+# Define BaseModel to handle the input parameters
+class DeploymentRequest(BaseModel):
     prefix: str
-    namespace: str
+    action: str
     replicas: int
+    namespace: str = "default"  # Default to "default" if not provided
 
-# Kubernetes API client setup
-def scale_deployment(namespace: str, deployment_name: str, replicas: int):
-    try:
-        # Load kube config from within the pod
-        config.load_incluster_config()
-
-        # Create an instance of the AppsV1Api
-        apps_v1 = client.AppsV1Api()
-
-        
-        print("before error!")
-        # Print the deployment name and namespace for debugging
-        print(f"Scaling deployment: {deployment_name} in namespace {namespace} to {replicas} replicas.")
-        print("error!!!!")
-        # Use patch_namespaced_deployment_scale to scale the deployment
-        scale_body = {
-            'spec': {
-                'replicas': replicas
-            }
-        }
-        
-        # Call the API to patch the deployment scale
-        api_response = apps_v1.patch_namespaced_deployment_scale(
-            name=deployment_name,
-            namespace=namespace,
-            body=scale_body
-        )
-        print(f"Deployment {deployment_name} scaled to {replicas} replicas.")
-        return f"Deployment {deployment_name} scaled to {replicas} replicas."
-
-    except ApiException as e:
-        print(f"Error scaling deployment: {e}")
-        raise HTTPException(status_code=400, detail="Error scaling deployment")
-
-# FastAPI route to handle scaling requests
-@app.post("/scale")
-async def scale_replicas(request: ScaleRequest):
-    # Validate that action is "scale"
-    if request.action != "scale":
-        raise HTTPException(status_code=400, detail="Invalid action. Use 'scale' to scale the deployment.")
-    
-    # Validate that the prefix is in the expected format (s1, s2, s3, etc.)
-    valid_prefixes = [request.prefix]  # List all valid prefixes
-    if request.prefix not in valid_prefixes:
-        raise HTTPException(status_code=400, detail=f"Invalid prefix. Allowed values are: {', '.join(valid_prefixes)}.")
-
-    # Ensure the deployment name follows the format
+@app.post("/update_replicas")
+async def update_replicas(request: DeploymentRequest):
+    """
+    Endpoint to update the replica count for a given deployment.
+    """
     deployment_name = f"{request.prefix}-deployment"
-    print(f"Scaling deployment: {deployment_name} in namespace {request.namespace} to {request.replicas} replicas.")
+    namespace = request.namespace
 
-    # Call the function to scale the deployment
-    result = scale_deployment(request.namespace, deployment_name, request.replicas)
+    try:
+        # Fetch the current deployment
+        deployment = v1.read_namespaced_deployment(deployment_name, namespace)
+        
+        # Update the replica count in the deployment
+        deployment.spec.replicas = request.replicas
 
-    return {"message": result}
+        # Apply the patch to update the deployment
+        v1.patch_namespaced_deployment(deployment_name, namespace, deployment)
+
+        # Respond with the updated replica count
+        return {"message": f"Replica count for {deployment_name} updated to {request.replicas}", "status": "success"}
+
+    except client.exceptions.ApiException as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+@app.get("/generate_yaml")
+async def generate_yaml(request: DeploymentRequest):
+    """
+    Endpoint to generate YAML files for deployment, service, and roles.
+    """
+    deployment_name = f"{request.prefix}-deployment"
+    namespace = request.namespace
+
+    try:
+        # Fetch the deployment object
+        deployment = v1.read_namespaced_deployment(deployment_name, namespace)
+        
+        # Convert the deployment object to a YAML string
+        deployment_yaml = client.api_client.sanitize_for_serialization(deployment)
+        deployment_yaml_str = yaml.dump(deployment_yaml, default_flow_style=False)
+
+        # Save to a file (optional)
+        with open(f'{deployment_name}_updated.yaml', 'w') as f:
+            f.write(deployment_yaml_str)
+
+        # Generate and return the YAML string
+        return {
+            "message": f"YAML files generated for {deployment_name} in namespace {namespace}",
+            "deployment_yaml": deployment_yaml_str
+        }
+
+    except client.exceptions.ApiException as e:
+        raise HTTPException(status_code=e.status, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
