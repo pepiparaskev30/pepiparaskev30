@@ -23,26 +23,18 @@ def load_k8s_config():
         logging.info("Successfully loaded in-cluster Kubernetes config.")
     except Exception as e:
         logging.warning(f"In-cluster config failed: {str(e)}")
-        try:
-            # Fall back to local config
-            config.load_kube_config()
-            logging.info("Successfully loaded local kube config.")
-        except Exception as e:
-            # If both fail, log the error and raise an HTTP exception
-            logging.error(f"Failed to load Kubernetes config: {str(e)}")
-            raise HTTPException(status_code=500, detail="Error loading Kubernetes config: " + str(e))
 
 
 # Create the scale deployment function
 def scale_deployment(prefix: str, namespace: str, replicas: int):
     load_k8s_config()
-    '''
-    # Load K8s config
-    load_k8s_config()
+    
+
     k8s_apps_v1 = client.AppsV1Api()
     
     # Specify the deployment name (using prefix)
     deployment_name = f"{prefix}-deployment"
+    '''
     return deployment_name, namespace, replicas
 
     try:
@@ -57,7 +49,7 @@ def scale_deployment(prefix: str, namespace: str, replicas: int):
         raise HTTPException(status_code=400, detail=f"Error scaling deployment: {str(e)}")
     '''
 # Define the POST endpoint to scale deployments
-    return "success"
+    return deployment_name
 @app.post("/scale-deployment")
 
 async def scale_deployment_api(payload: ScaleRequest):
