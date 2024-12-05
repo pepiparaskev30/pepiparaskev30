@@ -26,7 +26,7 @@ def load_k8s_config():
 
 
 # Create the scale deployment function
-def scale_deployment(prefix: str, namespace: str, replicas: int):
+def scale_deployment(prefix: str, namespace_: str, replicas: int):
     load_k8s_config()
     apps_v1 = client.AppsV1Api()
     
@@ -36,8 +36,8 @@ def scale_deployment(prefix: str, namespace: str, replicas: int):
             # Make the API call to update the deployment replicas
             api_response = apps_v1.patch_namespaced_deployment_scale(
                 name=deployment_name, 
-                namespace=ScaleRequest.namespace, 
-                body={'spec': {'replicas': ScaleRequest.replicas}}
+                namespace=namespace_, 
+                body={'spec': {'replicas': replicas}}
     )
             return {"message": f"Scaled {deployment_name} to {replicas} replicas"}
     except ApiException as e:
