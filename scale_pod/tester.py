@@ -2,7 +2,7 @@ import requests
 import json
 
 # Replace with the appropriate URL to your Minikube service
-url = "http://<minikube-ip>:<node-port>/scale"
+url = "http://192.168.49.2<node-port>/scale"
 
 # Define the payload for the POST request
 payload = {

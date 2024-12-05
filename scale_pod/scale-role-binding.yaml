@@ -1,5 +1,5 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding # RoleBinding
 metadata:
   name: fastapi-rolebinding
   namespace: default
@@ -8,6 +8,9 @@ subjects:
   name: default  # Using the default service account
   namespace: default
 roleRef:
-  kind: Role
+  kind: ClusterRole
   name: fastapi-role  # The Role we created above
   apiGroup: rbac.authorization.k8s.io
+
+
+

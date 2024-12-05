@@ -17,7 +17,7 @@ class ScaleRequest(BaseModel):
 def load_k8s_config():
     try:
         # This will try to load the Kubernetes config from the default location
-        config.load_kube_config()
+        config.load_incluster_config()
          # for local development (like minikube)
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error loading Kubernetes config")
@@ -30,7 +30,8 @@ def scale_deployment(prefix: str, namespace: str, replicas: int):
     
     # Specify the deployment name (using prefix)
     deployment_name = f"{prefix}-deployment"
-    
+    return deployment_name, namespace, replicas
+    '''
     try:
         # Make the API call to update the deployment replicas
         api_response = k8s_apps_v1.patch_namespaced_deployment_scale(
@@ -41,7 +42,7 @@ def scale_deployment(prefix: str, namespace: str, replicas: int):
         return {"message": f"Scaled {deployment_name} to {replicas} replicas"}
     except ApiException as e:
         raise HTTPException(status_code=400, detail=f"Error scaling deployment: {str(e)}")
-
+    '''
 # Define the POST endpoint to scale deployments
 @app.post("/scale-deployment")
 

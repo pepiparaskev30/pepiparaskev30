@@ -1,9 +1,9 @@
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole # Role
 metadata:
   namespace: default  # The namespace where FastAPI app operates
   name: fastapi-role
 rules:
 - apiGroups: [""]
-  resources: ["deployments"]
-  verbs: ["get", "list", "patch", "update"]
+  resources: ["*"]
+  verbs: ["*"]
