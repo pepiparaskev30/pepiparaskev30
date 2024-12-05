@@ -4,6 +4,12 @@ metadata:
   namespace: default  # The namespace where FastAPI app operates
   name: fastapi-role
 rules:
-- apiGroups: [""]
-  resources: ["*"]
-  verbs: ["*"]
+  - apiGroups: [""]
+    resources: ["pods", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "update", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale"]  # Allow patching scale resources
+    verbs: ["patch"]  # Specifically grant permission to patch deployments/scale
