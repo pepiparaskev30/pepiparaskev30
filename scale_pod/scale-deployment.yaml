@@ -15,7 +15,7 @@ spec:
       serviceAccountName: default  # The service account (to be used with Role/RoleBinding)
       containers:
       - name: fastapi
-        image: pepi1989/scale-pod:v14  # The Docker image name (replace this with your actual image)
+        image: pepi1989/scale-pod:v15  # The Docker image name (replace this with your actual image)
         ports:
         - containerPort: 8001
           protocol: TCP
