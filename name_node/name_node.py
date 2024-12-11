@@ -1,12 +1,15 @@
 from kubernetes import client, config
-import os
+import os, json
 import time
+
+SAVED_MODELS = "./saved_models"
 
 
 def retrieve_information():
     # Load in-cluster configuration
     try:
         config.load_incluster_config()
+
     except Exception as e:
         print("Could not load in-cluster config, falling back to local kube config.")
         config.load_kube_config()
@@ -52,6 +55,10 @@ def retrieve_information():
 
 if __name__ == "__main__":
     node_name_propagation, deployment_file = retrieve_information()
+    example_dict = {"a":12, "b":13, "Name": "Pepi"}
+    # Write the dictionary to the file in JSON format
+    with open(SAVED_MODELS, 'w') as json_file:
+        json.dump(example_dict, json_file, indent=4)  # `indent=4` formats the JSON nicely
     while True:
         print(f"service name: {deployment_file}")
         print(f"Node name: {node_name_propagation}")
