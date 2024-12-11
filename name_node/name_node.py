@@ -57,7 +57,7 @@ if __name__ == "__main__":
     node_name_propagation, deployment_file = retrieve_information()
     example_dict = {"a":12, "b":13, "Name": "Pepi"}
     # Write the dictionary to the file in JSON format
-    with open(SAVED_MODELS, 'w') as json_file:
+    with open(SAVED_MODELS+"/"+"data.json", 'w') as json_file:
         json.dump(example_dict, json_file, indent=4)  # `indent=4` formats the JSON nicely
     while True:
         print(f"service name: {deployment_file}")
