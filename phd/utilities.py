@@ -55,9 +55,9 @@ def retrieve_k8s_information():
 
 
 
-def get_node_metrics(PROMETHEUS_URL):
+def get_node_metrics(NODE_EXPORTER_METRICS_URL):
     # Query Prometheus for CPU usage and memory usage using PromQL
-    response = requests.get(PROMETHEUS_URL, params={"query": 'node_cpu_seconds_total{mode="user"}'})
+    response = requests.get(NODE_EXPORTER_METRICS_URL, params={"query": 'node_cpu_seconds_total{mode="user"}'})
     if response.status_code != 200:
         raise Exception("Failed to connect to Prometheus API")
 
@@ -69,7 +69,7 @@ def get_node_metrics(PROMETHEUS_URL):
     cpu_usage = float(cpu_usage_data["data"]["result"][0]["value"][1])  # Parse the value field
 
     # Query Prometheus for memory usage data
-    response = requests.get(PROMETHEUS_URL, params={"query": 'node_memory_Active_bytes'})
+    response = requests.get(NODE_EXPORTER_METRICS_URL, params={"query": 'node_memory_Active_bytes'})
     if response.status_code != 200:
         raise Exception("Failed to connect to Prometheus API for memory metrics")
 
