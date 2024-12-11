@@ -12,11 +12,12 @@ WORKDIR /app/evaluation_results
 # path to send the federated weights
 WORKDIR /app/federated_send_results
 
+# Install the Kubernetes Python client
+RUN pip install -r requirements.txt
 # Set the working directory in the container
 WORKDIR /app
 
-# Install the Kubernetes Python client
-RUN pip install -r requirements.txt
+
 
 # Copy the Python script into the container
 COPY main.py /app/main.py
