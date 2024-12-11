@@ -68,7 +68,6 @@ def get_node_metrics(NODE_EXPORTER_METRICS_URL):
     
     # Debugging: Output response text to verify contents
     print("Node Exporter Response:")
-    print(response.text)
     
     # Parse CPU usage from the response using regex
     cpu_usage_match = re.search(r'node_cpu_seconds_total\{mode="user"\} (\d+\.\d+)', response.text)
