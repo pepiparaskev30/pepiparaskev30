@@ -41,6 +41,7 @@ def retrieve_k8s_information():
         # Print the filtered deployments
         if filtered_deployments:
             print("Deployments starting with 's':")
+            print(filtered_deployments)
             for deployment in filtered_deployments:
                 deployment_file = deployment[0:2]
         else:
@@ -56,28 +57,25 @@ def retrieve_k8s_information():
 
 
 def get_node_metrics(NODE_EXPORTER_METRICS_URL):
-    # Query Prometheus for CPU usage and memory usage using PromQL
-    response = requests.get(NODE_EXPORTER_METRICS_URL, params={"query": 'node_cpu_seconds_total{mode="user"}'})
+    # Query the Node Exporter metrics endpoint
+    response = requests.get(NODE_EXPORTER_METRICS_URL)
+    
     if response.status_code != 200:
-        raise Exception("Failed to connect to Prometheus API")
+        raise Exception("Failed to connect to Node Exporter metrics endpoint")
+    
+    # Parse CPU usage from the response using regex
+    cpu_usage_match = re.search(r'node_cpu_seconds_total\{mode="user"\} (\d+\.\d+)', response.text)
+    if not cpu_usage_match:
+        raise Exception("Could not find expected CPU metrics in Node Exporter response")
 
-    # Parse the CPU usage data from the response
-    cpu_usage_data = response.json()
-    if not cpu_usage_data.get("data") or not cpu_usage_data["data"].get("result"):
-        raise Exception("Could not find expected metrics in Prometheus response")
+    cpu_usage = float(cpu_usage_match.group(1))
 
-    cpu_usage = float(cpu_usage_data["data"]["result"][0]["value"][1])  # Parse the value field
+    # Parse memory active bytes from the response using regex
+    memory_available_match = re.search(r'node_memory_Active_bytes (\d+)', response.text)
+    if not memory_available_match:
+        raise Exception("Could not find expected memory metrics in Node Exporter response")
 
-    # Query Prometheus for memory usage data
-    response = requests.get(NODE_EXPORTER_METRICS_URL, params={"query": 'node_memory_Active_bytes'})
-    if response.status_code != 200:
-        raise Exception("Failed to connect to Prometheus API for memory metrics")
-
-    memory_data = response.json()
-    if not memory_data.get("data") or not memory_data["data"].get("result"):
-        raise Exception("Could not find expected memory metrics in Prometheus response")
-
-    memory_available = float(memory_data["data"]["result"][0]["value"][1])  # Parse the value field
+    memory_available = float(memory_available_match.group(1))
 
     return {
         "cpu_usage_seconds_user": cpu_usage,
