@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-specific-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-info
+  template:
+    metadata:
+      labels:
+        app: node-info
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: custom-label
+                operator: In
+                values:
+                - "pepi-master"
+      containers:
+      - name: name_node_container
+        image: pepi1989/name_node:v0
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
