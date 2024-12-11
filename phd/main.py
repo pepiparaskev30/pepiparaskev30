@@ -50,13 +50,13 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 # URLS
-NODE_EXPORTER_METRICS_URL = "http://localhost:9100/metrics"
+PROMETHEUS_URL = "http://prometheus.prometheus.svc.cluster.local:9090/api/v1/query"
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 while True:
-    metrics = get_node_metrics(NODE_EXPORTER_METRICS_URL)
+    metrics = get_node_metrics(PROMETHEUS_URL)
     print(f"CPU Usage in User Mode (seconds): {metrics['cpu_usage_seconds_user']}")
     print(f"Memory Active Bytes: {metrics['memory_active_bytes']}")
     time.sleep(15)

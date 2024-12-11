@@ -1,5 +1,7 @@
 from kubernetes import client, config
 import os
+import re
+import requests
 
 
 
@@ -51,33 +53,33 @@ def retrieve_k8s_information():
     
     return node_name_propagation, deployment_file
 
-import requests
-import re
 
 
-
-
-
-def get_node_metrics(NODE_EXPORTER_METRICS_URL):
-    # Query the node-exporter metrics endpoint
-    response = requests.get(NODE_EXPORTER_METRICS_URL)
+def get_node_metrics(PROMETHEUS_URL):
+    # Query Prometheus for CPU usage and memory usage using PromQL
+    response = requests.get(PROMETHEUS_URL, params={"query": 'node_cpu_seconds_total{mode="user"}'})
     if response.status_code != 200:
-        raise Exception("Failed to connect to node-exporter metrics endpoint")
-    
-    # Parse CPU usage from the response
-    cpu_usage_match = re.search(r'node_cpu_seconds_total\{mode="user"\} (\d+\.\d+)', response.text)
-    memory_available_match = re.search(r'node_memory_Active_bytes (\d+)', response.text)
+        raise Exception("Failed to connect to Prometheus API")
 
-    if not cpu_usage_match or not memory_available_match:
-        raise Exception("Could not find expected metrics in node-exporter response")
+    # Parse the CPU usage data from the response
+    cpu_usage_data = response.json()
+    if not cpu_usage_data.get("data") or not cpu_usage_data["data"].get("result"):
+        raise Exception("Could not find expected metrics in Prometheus response")
 
-    cpu_usage = float(cpu_usage_match.group(1))
-    memory_available = float(memory_available_match.group(1))
+    cpu_usage = float(cpu_usage_data["data"]["result"][0]["value"][1])  # Parse the value field
+
+    # Query Prometheus for memory usage data
+    response = requests.get(PROMETHEUS_URL, params={"query": 'node_memory_Active_bytes'})
+    if response.status_code != 200:
+        raise Exception("Failed to connect to Prometheus API for memory metrics")
+
+    memory_data = response.json()
+    if not memory_data.get("data") or not memory_data["data"].get("result"):
+        raise Exception("Could not find expected memory metrics in Prometheus response")
+
+    memory_available = float(memory_data["data"]["result"][0]["value"][1])  # Parse the value field
 
     return {
         "cpu_usage_seconds_user": cpu_usage,
         "memory_active_bytes": memory_available
     }
-
-
-    
