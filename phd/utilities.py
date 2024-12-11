@@ -56,25 +56,32 @@ def retrieve_k8s_information():
 
 
 
+
+
+
 def get_node_metrics(NODE_EXPORTER_METRICS_URL):
     # Query the Node Exporter metrics endpoint
     response = requests.get(NODE_EXPORTER_METRICS_URL)
     
     if response.status_code != 200:
-        raise Exception("Failed to connect to Node Exporter metrics endpoint")
+        raise Exception(f"Failed to connect to Node Exporter metrics endpoint, status code: {response.status_code}")
+    
+    # Debugging: Output response text to verify contents
+    print("Node Exporter Response:")
+    print(response.text)
     
     # Parse CPU usage from the response using regex
     cpu_usage_match = re.search(r'node_cpu_seconds_total\{mode="user"\} (\d+\.\d+)', response.text)
     if not cpu_usage_match:
         raise Exception("Could not find expected CPU metrics in Node Exporter response")
-
+    
     cpu_usage = float(cpu_usage_match.group(1))
 
     # Parse memory active bytes from the response using regex
     memory_available_match = re.search(r'node_memory_Active_bytes (\d+)', response.text)
     if not memory_available_match:
         raise Exception("Could not find expected memory metrics in Node Exporter response")
-
+    
     memory_available = float(memory_available_match.group(1))
 
     return {
