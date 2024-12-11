@@ -1,9 +1,6 @@
 # Use the official Python 3.11 image as the base image
 FROM python:3.11-slim
 
-# Install the Kubernetes Python client
-RUN pip install -r requirements.txt
-
 #path to save the models
 WORKDIR /app/saved_models 
 #path to save the weights
@@ -19,7 +16,11 @@ WORKDIR /app/federated_send_results
 # Set the working directory in the container
 WORKDIR /app
 
+# Copy requirements.txt first into the container
+COPY requirements.txt /app/
 
+# Install the Kubernetes Python client
+RUN pip install -r requirements.txt
 
 # Copy the Python script into the container
 COPY main.py /app/main.py
