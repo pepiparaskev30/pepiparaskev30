@@ -1,0 +1,5 @@
+kubernetes==31.0.0
+requests==2.31.0
+fastapi==0.103.1
+numpy==1.26.1
+pandas==2.1.1
