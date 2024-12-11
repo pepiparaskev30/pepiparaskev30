@@ -22,7 +22,7 @@ spec:
                 values:
                 - "pepi-master"
       containers:
-      - name: name_node_container
+      - name: name-node-container
         image: pepi1989/client_pod:v3
         env:
         - name: POD_NAME
