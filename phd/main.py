@@ -20,7 +20,7 @@ import numpy as np
 from kubernetes import client, config
 import random
 import logging
-from utilities import retrieve_k8s_information, get_node_metrics
+from utilities import retrieve_k8s_information, get_cpu_usage
 
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
@@ -50,12 +50,11 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 # URLS
-NODE_EXPORTER_METRICS_URL = "http://node-exporter.prometheus.svc.cluster.local:9100/metrics"
+PROMETHEUS_URL = "http://prometheus.prometheus.svc.cluster.local:9090/"
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 while True:
-    metrics = get_node_metrics(NODE_EXPORTER_METRICS_URL)
-    print(metrics)
-    time.sleep(15)
+    result_cpu = get_cpu_usage(PROMETHEUS_URL)
+    

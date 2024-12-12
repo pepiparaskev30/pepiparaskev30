@@ -55,71 +55,35 @@ def retrieve_k8s_information():
     return node_name_propagation, deployment_file
 
 
-def get_node_metrics(url):
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise Exception(f"Failed to fetch metrics, status code {response.status_code}")
-    
-    # Extract CPU metrics
-    cpu_metrics = extract_cpu_metrics(response.text)
-    
-    # Extract memory metrics
-    memory_metrics = extract_memory_metrics(response.text)
-    
-    # Combine both sets of data into one dictionary
-    node_metrics = {**cpu_metrics, **memory_metrics}
-    
-    return node_metrics
 
+def get_cpu_usage(url):
+    prometheus_url = f'http://{url}/api/v1/query'
+    # Define the query inside the function
+    query = '100 * avg(1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)'
     
-def extract_cpu_metrics(metrics_data):
-    cpu_metrics = {}
+    # Send the HTTP request to Prometheus with the query
+    response = requests.get(prometheus_url, params={'query': query})
     
-    # Extract total CPU usage time for each mode (user, system, idle, etc.)
-    cpu_usage_pattern = re.compile(r'node_cpu_seconds_total\{cpu="(\d+)",mode="(\w+)"\}\s+(\d+\.\d+)')
-    cpu_usage = {}
-    for match in cpu_usage_pattern.finditer(metrics_data):
-        cpu, mode, value = match.groups()
-        value = float(value)
-        if cpu not in cpu_usage:
-            cpu_usage[cpu] = {}
-        cpu_usage[cpu][mode] = value
-    
-    # Extract CPU idle time for each CPU core
-    cpu_metrics["cpu_usage"] = cpu_usage
-    
-    # Return extracted CPU data
-    return cpu_metrics
-
-def extract_memory_metrics(metrics_data):
-    memory_metrics = {}
-    
-    # Extract total memory available, used, and free from the system
-    mem_pattern = re.compile(r'go_memstats_(alloc|heap)_bytes\s+(\d+\.\d+)')
-    memory_usage = {}
-    
-    # Memory stats that we will extract
-    for match in mem_pattern.finditer(metrics_data):
-        metric, value = match.groups()
-        value = float(value)
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Parse the response and extract CPU usage data
+        data = response.json()['data']['result']
         
-        # Categorize the metrics
-        if metric == "alloc":
-            memory_usage["memory_allocated"] = value
-        elif metric == "heap":
-            memory_usage["heap_usage"] = value
+        # Prepare list to store CPU usage percentage values
+        cpu_usage_percentages = []
+        
+        # Iterate over the result data and extract the CPU usage value for each instance
+        for result in data:
+            cpu_usage = result['value'][1]  # CPU usage percentage value
+            cpu_usage_percentages.append(float(cpu_usage))  # Convert to float for calculations
+        
+        # Return the result in the desired format: {'cpu': [value1, value2, ...]}
+        return {'cpu': cpu_usage_percentages}
+    else:
+        print(f"Error querying Prometheus: {response.status_code}")
+        return None
 
-    # Total system memory from `go_memstats_sys_bytes`
-    total_memory_pattern = re.compile(r'go_memstats_sys_bytes\s+(\d+\.\d+)')
-    match = total_memory_pattern.search(metrics_data)
-    if match:
-        memory_usage["total_memory"] = float(match.group(1))
 
-    # Calculate memory used and free (can be estimated from total and heap/allocated memory)
-    memory_usage["memory_used"] = memory_usage["total_memory"] - memory_usage.get("heap_usage", 0)
-    memory_usage["memory_free"] = memory_usage["total_memory"] - memory_usage["memory_used"]
-    
-    # Return extracted memory data
-    memory_metrics["memory_usage"] = memory_usage
-    
-    return memory_metrics
+
+
+
