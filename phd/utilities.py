@@ -55,36 +55,71 @@ def retrieve_k8s_information():
     return node_name_propagation, deployment_file
 
 
-
-
-
-
-def get_node_metrics(NODE_EXPORTER_METRICS_URL):
-    # Query the Node Exporter metrics endpoint
-    response = requests.get(NODE_EXPORTER_METRICS_URL)
-    
+def get_node_metrics(url):
+    response = requests.get(url)
     if response.status_code != 200:
-        raise Exception(f"Failed to connect to Node Exporter metrics endpoint, status code: {response.status_code}")
+        raise Exception(f"Failed to fetch metrics, status code {response.status_code}")
     
-    # Debugging: Output response text to verify contents
-    print("Node Exporter Response:")
-    print(response.text)
+    # Extract CPU metrics
+    cpu_metrics = extract_cpu_metrics(response.text)
     
-    # Parse CPU usage from the response using regex
-    cpu_usage_match = re.search(r'node_cpu_seconds_total\{mode="user"\} (\d+\.\d+)', response.text)
-    if not cpu_usage_match:
-        raise Exception("Could not find expected CPU metrics in Node Exporter response")
+    # Extract memory metrics
+    memory_metrics = extract_memory_metrics(response.text)
     
-    cpu_usage = float(cpu_usage_match.group(1))
+    # Combine both sets of data into one dictionary
+    node_metrics = {**cpu_metrics, **memory_metrics}
+    
+    return node_metrics
 
-    # Parse memory active bytes from the response using regex
-    memory_available_match = re.search(r'node_memory_Active_bytes (\d+)', response.text)
-    if not memory_available_match:
-        raise Exception("Could not find expected memory metrics in Node Exporter response")
     
-    memory_available = float(memory_available_match.group(1))
+def extract_cpu_metrics(metrics_data):
+    cpu_metrics = {}
+    
+    # Extract total CPU usage time for each mode (user, system, idle, etc.)
+    cpu_usage_pattern = re.compile(r'node_cpu_seconds_total\{cpu="(\d+)",mode="(\w+)"\}\s+(\d+\.\d+)')
+    cpu_usage = {}
+    for match in cpu_usage_pattern.finditer(metrics_data):
+        cpu, mode, value = match.groups()
+        value = float(value)
+        if cpu not in cpu_usage:
+            cpu_usage[cpu] = {}
+        cpu_usage[cpu][mode] = value
+    
+    # Extract CPU idle time for each CPU core
+    cpu_metrics["cpu_usage"] = cpu_usage
+    
+    # Return extracted CPU data
+    return cpu_metrics
 
-    return {
-        "cpu_usage_seconds_user": cpu_usage,
-        "memory_active_bytes": memory_available
-    }
+def extract_memory_metrics(metrics_data):
+    memory_metrics = {}
+    
+    # Extract total memory available, used, and free from the system
+    mem_pattern = re.compile(r'go_memstats_(alloc|heap)_bytes\s+(\d+\.\d+)')
+    memory_usage = {}
+    
+    # Memory stats that we will extract
+    for match in mem_pattern.finditer(metrics_data):
+        metric, value = match.groups()
+        value = float(value)
+        
+        # Categorize the metrics
+        if metric == "alloc":
+            memory_usage["memory_allocated"] = value
+        elif metric == "heap":
+            memory_usage["heap_usage"] = value
+
+    # Total system memory from `go_memstats_sys_bytes`
+    total_memory_pattern = re.compile(r'go_memstats_sys_bytes\s+(\d+\.\d+)')
+    match = total_memory_pattern.search(metrics_data)
+    if match:
+        memory_usage["total_memory"] = float(match.group(1))
+
+    # Calculate memory used and free (can be estimated from total and heap/allocated memory)
+    memory_usage["memory_used"] = memory_usage["total_memory"] - memory_usage.get("heap_usage", 0)
+    memory_usage["memory_free"] = memory_usage["total_memory"] - memory_usage["memory_used"]
+    
+    # Return extracted memory data
+    memory_metrics["memory_usage"] = memory_usage
+    
+    return memory_metrics

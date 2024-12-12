@@ -57,6 +57,5 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 while True:
     metrics = get_node_metrics(NODE_EXPORTER_METRICS_URL)
-    print(f"CPU Usage in User Mode (seconds): {metrics['cpu_usage_seconds_user']}")
-    print(f"Memory Active Bytes: {metrics['memory_active_bytes']}")
+    print(metrics)
     time.sleep(15)
