@@ -56,17 +56,6 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 
 while True:
-    # Fetch metrics from Node Exporter
-    metrics_data = get_metrics(node_exporter_url)
-    
-    if metrics_data:
-        # Parse CPU and memory metrics
-        cpu_metrics = parse_cpu_metrics(metrics_data)
-        memory_metrics = parse_memory_metrics(metrics_data)
-        
-        # Display the metrics
-        display_metrics(cpu_metrics, memory_metrics)
-    else:
-        print("Unable to fetch data")
+    print("hello")
     time.sleep(10)
     
