@@ -55,29 +55,18 @@ def retrieve_k8s_information():
     return node_name_propagation, deployment_file
 
 
-
-def get_cpu_usage(url):
-    prometheus_url = f'http://{url}/api/v1/query'
-    # Define the query inside the function
+def get_cpu_usage(PROMETHEUS_URL):
     query = '100 * avg(1 - rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance)'
+    response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={'query': query})
     
-    # Send the HTTP request to Prometheus with the query
-    response = requests.get(prometheus_url, params={'query': query})
-    
-    # Check if the request was successful
     if response.status_code == 200:
-        # Parse the response and extract CPU usage data
         data = response.json()['data']['result']
         
-        # Prepare list to store CPU usage percentage values
         cpu_usage_percentages = []
-        
-        # Iterate over the result data and extract the CPU usage value for each instance
         for result in data:
-            cpu_usage = result['value'][1]  # CPU usage percentage value
-            cpu_usage_percentages.append(float(cpu_usage))  # Convert to float for calculations
+            cpu_usage = result['value'][1]  # Extract CPU usage percentage
+            cpu_usage_percentages.append(float(cpu_usage))
         
-        # Return the result in the desired format: {'cpu': [value1, value2, ...]}
         return {'cpu': cpu_usage_percentages}
     else:
         print(f"Error querying Prometheus: {response.status_code}")

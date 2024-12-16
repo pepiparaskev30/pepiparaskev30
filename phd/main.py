@@ -50,7 +50,7 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 # URLS
-PROMETHEUS_URL = "http://prometheus:9090/"
+PROMETHEUS_URL = 'http://prometheus:9090' 
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
