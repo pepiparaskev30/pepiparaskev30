@@ -1,6 +1,12 @@
 # Use the official Python 3.11 image as the base image
 FROM python:3.11-slim
 
+# Install wget and curl
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 #path to save the models
 WORKDIR /app/saved_models 
 #path to save the weights

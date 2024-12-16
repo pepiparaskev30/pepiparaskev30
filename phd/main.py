@@ -57,4 +57,5 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 while True:
     print("hello")
+    time.sleep(10)
     
