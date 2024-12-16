@@ -2,6 +2,7 @@ from kubernetes import client, config
 import os
 import re
 import requests
+import json
 
 
 
@@ -54,82 +55,60 @@ def retrieve_k8s_information():
     
     return node_name_propagation, deployment_file
 
-def get_metrics(url):
-    """
-    Fetches the raw metrics from the Node Exporter /metrics endpoint.
-    
-    :param url: The URL of the Node Exporter (e.g., http://localhost:9100/metrics)
-    :return: Raw metrics data as a string
-    """
-    try:
-        response = requests.get(url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        return response.text
-    except requests.RequestException as e:
-        print(f"Error fetching metrics from {url}: {e}")
-        return None
 
-def parse_cpu_metrics(metrics_data):
-    """
-    Parses CPU-related metrics from the raw metrics data.
-    
-    :param metrics_data: Raw metrics data (string)
-    :return: A dictionary with CPU metrics
-    """
-    cpu_metrics = {}
-    
-    # Match 'cpu' related metrics, e.g., `node_cpu_seconds_total{mode="user",cpu="0"} 12.34`
-    cpu_pattern = re.compile(r'node_cpu_seconds_total\{mode="(.*?)",cpu="(.*?)"\}\s+([0-9\.]+)')
-    
-    for match in cpu_pattern.finditer(metrics_data):
-        mode = match.group(1)
-        cpu = match.group(2)
-        value = float(match.group(3))
+
+# Function to query Prometheus for CPU and Memory metrics
+def get_prometheus_metrics(prometheus_url):
+    # Function to query Prometheus for a given metric
+    def query_prometheus(query):
+        # Prepare the Prometheus query API URL
+        url = f"{prometheus_url}/api/v1/query"
         
-        if cpu not in cpu_metrics:
-            cpu_metrics[cpu] = {}
+        # Make the request
+        params = {'query': query}
+        response = requests.get(url, params=params)
         
-        cpu_metrics[cpu][mode] = value
-    
-    return cpu_metrics
+        # If the request was successful (HTTP status 200)
+        if response.status_code == 200:
+            # Parse the JSON response
+            data = response.json()
+            
+            # Check for query results
+            if data.get('status') == 'success':
+                return data['data']['result']
+            else:
+                print(f"Error in Prometheus query: {data.get('error')}")
+        else:
+            print(f"Failed to fetch data from Prometheus. HTTP Status: {response.status_code}")
+        
+        return []
 
-def parse_memory_metrics(metrics_data):
-    """
-    Parses memory-related metrics from the raw metrics data.
-    
-    :param metrics_data: Raw metrics data (string)
-    :return: A dictionary with memory metrics
-    """
-    memory_metrics = {}
-    
-    # Match memory usage, e.g., `node_memory_MemTotal_bytes 8192071680`
-    memory_pattern = re.compile(r'node_memory_(.*?bytes)\s+([0-9]+)')
-    
-    for match in memory_pattern.finditer(metrics_data):
-        metric_name = match.group(1)
-        value = int(match.group(2))
-        memory_metrics[metric_name] = value
-    
-    return memory_metrics
+    # Query for CPU metrics (node_cpu_seconds_total)
+    cpu_query = 'rate(node_cpu_seconds_total[1m])'
 
-def display_metrics(cpu_metrics, memory_metrics):
-    """
-    Display the parsed CPU and Memory metrics in a readable format.
-    
-    :param cpu_metrics: Dictionary of CPU metrics
-    :param memory_metrics: Dictionary of memory metrics
-    """
-    print("\n--- CPU Metrics ---")
-    for cpu, stats in cpu_metrics.items():
-        print(f"CPU {cpu}:")
-        for mode, value in stats.items():
-            print(f"  {mode}: {value:.2f} seconds")
-    
-    print("\n--- Memory Metrics ---")
-    for metric, value in memory_metrics.items():
-        print(f"{metric}: {value:,} bytes")
+    # Query for Memory metrics (node_memory_MemAvailable_bytes)
+    memory_query = 'node_memory_MemAvailable_bytes'
 
+    # Fetch CPU data
+    cpu_data = query_prometheus(cpu_query)
 
+    # Fetch Memory data
+    memory_data = query_prometheus(memory_query)
 
+    # Print the results for CPU metrics
+    print("CPU Metrics:")
+    if cpu_data:
+        for cpu in cpu_data:
+            print(json.dumps(cpu, indent=2))
+    else:
+        print("No CPU data available.")
+
+    # Print the results for Memory metrics
+    print("\nMemory Metrics:")
+    if memory_data:
+        for memory in memory_data:
+            print(json.dumps(memory, indent=2))
+    else:
+        print("No memory data available.")
 
 
