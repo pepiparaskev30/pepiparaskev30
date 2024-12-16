@@ -56,5 +56,5 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 
 while True:
-    result_cpu = get_cpu_usage(PROMETHEUS_URL)
+    print("hello")
     
