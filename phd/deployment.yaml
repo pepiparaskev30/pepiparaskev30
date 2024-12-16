@@ -23,7 +23,7 @@ spec:
                 - "pepi-master"
       containers:
       - name: name-node-container
-        image: pepi1989/client_pod:v16
+        image: cleint_pod:v16
         env:
         - name: POD_NAME
           valueFrom:
