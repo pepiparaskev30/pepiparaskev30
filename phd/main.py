@@ -20,7 +20,7 @@ import numpy as np
 from kubernetes import client, config
 import random
 import logging
-from utilities import retrieve_k8s_information, get_prometheus_metrics, run_query_every_20_seconds
+from utilities import retrieve_k8s_information, run_query_every_20_seconds
 
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
