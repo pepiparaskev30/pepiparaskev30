@@ -3,6 +3,7 @@ import os
 import re
 import requests
 import json
+import time
 
 
 
@@ -57,61 +58,47 @@ def retrieve_k8s_information():
 
 
 
-# Function to query Prometheus for CPU and Memory metrics
-def get_prometheus_metrics(prometheus_url):
-    # Function to query Prometheus for a given metric
-    def query_prometheus(query):
-        # Prepare the Prometheus query API URL
-        url = f"{prometheus_url}/api/v1/query"
-        
-        # Make the request
-        params = {'query': query}
-        response = requests.get(url, params=params)
-        
-        # If the request was successful (HTTP status 200)
-        if response.status_code == 200:
-            # Parse the JSON response
-            data = response.json()
-            
-            # Check for query results
-            if data.get('status') == 'success':
-                return data['data']['result']
-            else:
-                print(f"Error in Prometheus query: {data.get('error')}")
-        else:
-            print(f"Failed to fetch data from Prometheus. HTTP Status: {response.status_code}")
-        
-        return []
+# Define the Prometheus query with 20-second interval
 
-    # Query for CPU metrics (node_cpu_seconds_total)
-    cpu_query = 'rate(node_cpu_seconds_total[1m])'
 
-    # Query for Memory metrics (node_memory_MemAvailable_bytes)
-    memory_query = 'node_memory_MemAvailable_bytes'
-
-    # Fetch CPU data
-    cpu_data = query_prometheus(cpu_query)
-
-    # Fetch Memory data
-    memory_data = query_prometheus(memory_query)
-
-    # Print the results for CPU metrics
-    print("CPU Metrics:")
-    if cpu_data:
-        for cpu in cpu_data:
-            for element in cpu:
-                if element['mode'] = "iowait":
-                    cpu_metric = {"cpu": "iowait", "value":element['value'][1]}
-                    print(cpu_metric)
+# Function to query Prometheus and get results
+def query_prometheus(prometheus_url):
+    query = '100 * (1 - avg(rate(node_cpu_seconds_total{mode="idle"}[20s])) by (instance))'
+    # Build the URL for the Prometheus API query endpoint
+    url = f"{prometheus_url}/api/v1/query"
+    
+    # Send the query
+    response = requests.get(url, params={'query': query})
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        result = response.json()  # Parse JSON response
+        return result
     else:
-        print("No CPU data available.")
+        print(f"Error querying Prometheus: {response.status_code}")
+        return None
 
-    # Print the results for Memory metrics
-    print("\nMemory Metrics:")
-    if memory_data:
-        for memory in memory_data:
-            memory_metric = {"memory":"node_memory_MemAvailable_bytes", "value": memory["vaue"][1]}
+# Function to extract CPU utilization from Prometheus query result
+def extract_cpu_utilization(query_result):
+    if query_result and query_result['status'] == 'success':
+        data = query_result['data']['result']
+        
+        # Loop through the results and print each instance's CPU utilization
+        for item in data:
+            instance = item['metric']['instance']
+            value = item['value'][1]  # The value is the second element in the list
+            print(f"Instance: {instance}, CPU Utilization: {value}%")
     else:
-        print("No memory data available.")
+        print("No data or query failed.")
+
+# Function to run the query at regular intervals (e.g., every 20 seconds)
+def run_query_every_20_seconds(prometheus_url):
+    while True:
+        result = query_prometheus(prometheus_url)
+        extract_cpu_utilization(result)
+        
+        # Wait for 20 seconds before running the query again
+        time.sleep(20)
+
 
 

@@ -20,7 +20,7 @@ import numpy as np
 from kubernetes import client, config
 import random
 import logging
-from utilities import retrieve_k8s_information, get_prometheus_metrics
+from utilities import retrieve_k8s_information, get_prometheus_metrics, run_query_every_20_seconds
 
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
@@ -56,6 +56,7 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 
 while True:
-    get_prometheus_metrics(url)
-    time.sleep(2)
+    # Execute the function to run the query every 20 seconds
+    run_query_every_20_seconds(url)
+
     
