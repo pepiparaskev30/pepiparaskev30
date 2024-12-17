@@ -99,7 +99,10 @@ def get_prometheus_metrics(prometheus_url):
     print("CPU Metrics:")
     if cpu_data:
         for cpu in cpu_data:
-            print(json.dumps(cpu, indent=2))
+            for element in cpu:
+                if element['mode'] = "iowait":
+                    cpu_metric = {"cpu": "iowait", "value":element['value'][1]}
+                    print(cpu_metric)
     else:
         print("No CPU data available.")
 
@@ -107,7 +110,7 @@ def get_prometheus_metrics(prometheus_url):
     print("\nMemory Metrics:")
     if memory_data:
         for memory in memory_data:
-            print(json.dumps(memory, indent=2))
+            memory_metric = {"memory":"node_memory_MemAvailable_bytes", "value": memory["vaue"][1]}
     else:
         print("No memory data available.")
 
