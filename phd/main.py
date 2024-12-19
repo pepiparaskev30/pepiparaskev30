@@ -17,9 +17,10 @@ import time, os, warnings, json
 from datetime import datetime
 import pandas as pd
 import numpy as np
+from requests.api import get
 from kubernetes import client, config
 import random
-from utilities import retrieve_k8s_information, run_query_every_20_seconds
+from utilities import retrieve_k8s_information, get_prometheus_metrics
 import logging
 
 
@@ -57,7 +58,8 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 
 while True:
-    # Execute the function to run the query every 20 seconds
-    run_query_every_20_seconds(url)
+    # Execute the function to run the query every 3 seconds
+    get_prometheus_metrics(url)
+    time.sleep(3)
 
     
