@@ -3,6 +3,7 @@ import os
 import re
 import requests
 import json
+import pandas
 
 
 
@@ -59,59 +60,39 @@ def retrieve_k8s_information():
 
 # Function to query Prometheus for CPU and Memory metrics
 def get_prometheus_metrics(prometheus_url):
-    # Function to query Prometheus for a given metric
-    def query_prometheus(query):
-        # Prepare the Prometheus query API URL
-        url = f"{prometheus_url}/api/v1/query"
-        
-        # Make the request
-        params = {'query': query}
+    # Query Prometheus for the CPU time series
+    query = 'rate(node_cpu_seconds_total{mode!="idle"}[1m])'
+    url = f"{prometheus_url}/api/v1/query"
+    params = {'query': query}
+    
+    try:
         response = requests.get(url, params=params)
+        response.raise_for_status()
+        data = response.json()
         
-        # If the request was successful (HTTP status 200)
-        if response.status_code == 200:
-            # Parse the JSON response
-            data = response.json()
-            
-            # Check for query results
-            if data.get('status') == 'success':
-                return data['data']['result']
-            else:
-                print(f"Error in Prometheus query: {data.get('error')}")
-        else:
-            print(f"Failed to fetch data from Prometheus. HTTP Status: {response.status_code}")
+        if data['status'] != 'success':
+            print("Error: Prometheus query failed")
+            return None
         
-        return []
+        # Extract the relevant time series data
+        result = data['data']['result']
+        
+        if not result:
+            print("Error: No data returned from Prometheus")
+            return None
+        
+        # Normalize the CPU usage (sum the rates of all CPU cores)
+        total_cpu_usage = 0
+        for series in result:
+            values = series['values']
+            for timestamp, value in values:
+                total_cpu_usage += float(value)
+        
+        # Return the normalized CPU usage as a percentage
+        return total_cpu_usage * 100
 
-    # Query for CPU metrics (node_cpu_seconds_total)
-    cpu_query = 'rate(node_cpu_seconds_total[1m])'
-
-    # Query for Memory metrics (node_memory_MemAvailable_bytes)
-    memory_query = 'node_memory_MemAvailable_bytes'
-
-    # Fetch CPU data
-    cpu_data = query_prometheus(cpu_query)
-
-    # Fetch Memory data
-    memory_data = query_prometheus(memory_query)
-
-    # Print the results for CPU metrics
-    print("CPU Metrics:")
-    if cpu_data:
-        for cpu in cpu_data:
-            for element in cpu:
-                if element['mode'] == "iowait":
-                    cpu_metric = {"cpu": "iowait", "value":element['value'][1]}
-                    print(cpu_metric)
-    else:
-        print("No CPU data available.")
-
-    # Print the results for Memory metrics
-    print("\nMemory Metrics:")
-    if memory_data:
-        for memory in memory_data:
-            memory_metric = {"memory":"node_memory_MemAvailable_bytes", "value":memory['value'][1]}
-    else:
-        print("No memory data available.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error connecting to Prometheus: {e}")
+        return None
 
 

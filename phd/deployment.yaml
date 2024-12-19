@@ -16,21 +16,22 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: custom-label
-                operator: In
-                values:
-                - "pepi-master"
+              - matchExpressions:
+                  - key: custom-label
+                    operator: In
+                    values:
+                      - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
-      - name: name-node-container
-        image: pepi1989/client_pod:v25
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-
+        - name: name-node-container
+          image: pepi1989/client_pod:v26  # Replace this with your correct image
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name  # Will dynamically get pod name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace  # Will dynamically get pod namespace
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"  # Add the Prometheus URL here

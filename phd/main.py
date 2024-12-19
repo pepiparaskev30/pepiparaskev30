@@ -49,17 +49,18 @@ WEIGHTS_PATH = "./weights_path"
 LOG_PATH_FILE = "./log_path_file"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 # URLS
-url = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 while True:
     # Execute the function to run the query every 3 seconds
-    get_prometheus_metrics(url)
+    print(get_prometheus_metrics(PROMETHEUS_URL))
     time.sleep(3)
 
     
