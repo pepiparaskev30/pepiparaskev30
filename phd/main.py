@@ -60,6 +60,7 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 while True:
     # Execute the function to run the query every 3 seconds
+    print("hello")
     print(get_prometheus_metrics(PROMETHEUS_URL))
     time.sleep(3)
 

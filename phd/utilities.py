@@ -62,6 +62,7 @@ def retrieve_k8s_information():
 def get_prometheus_metrics(prometheus_url):
     # Query Prometheus for the CPU time series
     query = 'rate(node_cpu_seconds_total{mode!="idle"}[1m])'
+    print(prometheus_url)
     url = f"{prometheus_url}/api/v1/query"
     params = {'query': query}
     
