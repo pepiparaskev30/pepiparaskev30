@@ -131,6 +131,6 @@ if __name__ == "__main__":
         print("Failed to connect to Prometheus.")
     
     print("----------------------------------")
-    
-    print(get_node_cpu_usage(NODE_NAME, PROMETHEUS_URL))
+
+    print(get_node_cpu_usage(PROMETHEUS_URL, NODE_NAME))
     time.sleep(2)
