@@ -22,6 +22,7 @@ from kubernetes import client, config
 import random
 from utilities import retrieve_k8s_information, get_prometheus_metrics
 import logging
+import requests
 
 
 ################ USEFUL CONSTANT VARIABLES #################
@@ -57,11 +58,26 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+QUERY = 'rate(node_cpu_seconds_total[5m])'
 
 while True:
     # Execute the function to run the query every 3 seconds
     print("hello")
-    print(get_prometheus_metrics(PROMETHEUS_URL))
-    time.sleep(3)
+    # Perform the HTTP request
+    try:
+        response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": QUERY})
+        response.raise_for_status()  # Raise exception for HTTP errors
+
+        # Parse the JSON response
+        result = response.json()
+        if result["status"] == "success":
+            for metric in result["data"]["result"]:
+                print(f"Instance: {metric['metric'].get('instance', 'unknown')}, CPU Usage: {metric['value'][1]}")
+        else:
+            print(f"Query failed with status: {result['status']} and message: {result.get('error')}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error querying Prometheus: {e}")
+    
+    time.sleep(10)
 
     

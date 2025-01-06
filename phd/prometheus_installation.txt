@@ -1,0 +1,21 @@
+#Step 1: Install Prometheus using Helm
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install prometheus prometheus-community/kube-prometheus-stack --namespace monitoring --create-namespace
+
+#Step 2: Verify Prometheus and Node Exporter Installation
+kubectl get pods -n monitoring
+kubectl get daemonset -n monitoring
+kubectl get svc -n monitoring
+
+# to uninstall
+helm uninstall prometheus -n monitoring
+kubectl get pods -n monitoring
+kubectl get daemonset -n monitoring
+kubectl get svc -n monitoring
+
+
+
+
+
+
