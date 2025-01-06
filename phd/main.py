@@ -132,8 +132,8 @@ def get_cpu_usage_for_node(prometheus_url, node_name):
         return None
 
 
-if __name__ == "__main__":
-    print("Node_name", NODE_NAME)
-        # Check connection
-    print("hello")
-    time.sleep(2)
+
+print("Node_name", NODE_NAME)
+    # Check connection
+print("hello")
+time.sleep(2)
