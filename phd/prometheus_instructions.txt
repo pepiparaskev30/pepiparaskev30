@@ -1,6 +1,11 @@
 kubectl apply -f agent_role_role_binding.yaml
 kubectl apply -f agent_deployment.yaml
 
+
+# to test 
+kubectl get pods
+watch kubectl logs <pod-name>
+
 # to delete
 
 kubectl delete -f agent_role_role_binding.yaml 

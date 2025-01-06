@@ -135,12 +135,5 @@ def get_cpu_usage_for_node(prometheus_url, node_name):
 if __name__ == "__main__":
     print("Node_name", NODE_NAME)
         # Check connection
-    if check_prometheus_connection(PROMETHEUS_URL):
-        print("Prometheus is reachable.")
-    else:
-        print("Failed to connect to Prometheus.")
-    
-    print("----------------------------------")
-
-    print(get_cpu_usage_for_node(PROMETHEUS_URL, NODE_NAME))
+    print("hello")
     time.sleep(2)
