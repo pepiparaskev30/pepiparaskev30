@@ -83,44 +83,54 @@ def check_prometheus_connection(prometheus_url):
         print(f"Failed to connect to Prometheus: {e}")
         return False
 
-def get_node_cpu_usage(prometheus_url, node_name):
-    # Define the PromQL query to get the CPU usage of the specified node
+def get_cpu_usage_for_node(prometheus_url, node_name):
+    """
+    Queries Prometheus for CPU usage for a specific node using Node Exporter metrics.
+    
+    Args:
+        prometheus_url (str): URL of the Prometheus server.
+        node_name (str): The name of the node to query (matches the `instance` label in Prometheus).
+    
+    Returns:
+        float: The CPU usage percentage for the specified node, or None if not found.
+    """
+    # Define the PromQL query for the specific node
     promql_query = f"""
-    100 - (avg by(instance) (rate(node_cpu_seconds_total{{mode="idle", instance=~"{node_name}.*"}}[5m])) * 100)
+    100 - (avg by (instance) (rate(node_cpu_seconds_total{{mode="idle", instance="{node_name}"}}[5m])) * 100)
     """
 
-    # Define the Prometheus API URL for querying
+    # Define the Prometheus API query URL
     query_url = f"{prometheus_url}/api/v1/query"
 
-    # Define the parameters for the request
+    # Set query parameters
     params = {
         "query": promql_query
     }
 
     try:
-        # Send the GET request to Prometheus API
-        response = requests.get(query_url, params=params)
+        # Send the GET request to the Prometheus API
+        response = requests.get(query_url, params=params, timeout=10)
 
         # Check if the response is successful
         if response.status_code == 200:
-            # Parse the JSON response
             data = response.json()
 
-            # Extract the CPU usage value from the response
+            # Extract the CPU usage value for the specified node
             if "data" in data and "result" in data["data"] and len(data["data"]["result"]) > 0:
-                cpu_usage = data["data"]["result"][0]["value"][1]
-                return float(cpu_usage)
+                cpu_usage = float(data["data"]["result"][0]["value"][1])  # Value is [timestamp, value]
+                return cpu_usage
             else:
-                print("No data returned from Prometheus.")
+                print(f"No data returned for node '{node_name}'.")
                 return None
         else:
             print(f"Error: Received status code {response.status_code} from Prometheus.")
             print(response.text)
             return None
 
-    except Exception as e:
-        print(f"Error querying Prometheus: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to query Prometheus: {e}")
         return None
+
 
 if __name__ == "__main__":
     print("Node_name", NODE_NAME)
@@ -132,5 +142,5 @@ if __name__ == "__main__":
     
     print("----------------------------------")
 
-    print(get_node_cpu_usage(PROMETHEUS_URL, NODE_NAME))
+    print(get_cpu_usage_for_node(PROMETHEUS_URL, NODE_NAME))
     time.sleep(2)
