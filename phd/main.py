@@ -38,7 +38,7 @@ fisher_multiplier = 1000
 
 
 trained_model_predictions=[]
-NODE_NAME,SERVICE  = retrieve_k8s_information()
+NODE_NAME, POD  = retrieve_k8s_information()
 
 ################ USEFUL DIRECTORIES #################
 global SAVED_MODELS_PATH
@@ -58,11 +58,14 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-QUERY = 'rate(node_cpu_seconds_total[5m])'
+QUERY = '100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100)'
 
 while True:
     # Execute the function to run the query every 3 seconds
     print("hello")
+    print(NODE_NAME)
+    print(POD)
+
     # Perform the HTTP request
     try:
         response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": QUERY})
