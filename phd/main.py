@@ -98,10 +98,10 @@ def get_cpu_usage_for_node(prometheus_url, node_name):
     promql_query = f"""
     100 - (avg by (instance) (rate(node_cpu_seconds_total{{mode="idle", instance="{node_name}"}}[5m])) * 100)
     """
-
+    
     # Define the Prometheus API query URL
     query_url = f"{prometheus_url}/api/v1/query"
-
+    
     # Set query parameters
     params = {
         "query": promql_query
@@ -136,4 +136,5 @@ while True:
     print("Node_name", NODE_NAME)
         # Check connection
     print("hello")
+    print(get_cpu_usage_for_node(PROMETHEUS_URL, NODE_NAME))
     time.sleep(2)
