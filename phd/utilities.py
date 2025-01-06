@@ -6,6 +6,35 @@ import json
 import pandas
 
 
+def get_node_name():
+    try:
+        # Load the in-cluster Kubernetes configuration
+        config.load_incluster_config()
+        print("Loaded in-cluster configuration.")
+
+        # Create an instance of the CoreV1Api to interact with the Kubernetes API
+        v1 = client.CoreV1Api()
+
+        # Get the pod name and namespace from environment variables
+        pod_name = os.getenv('POD_NAME')
+        namespace = os.getenv('POD_NAMESPACE')
+
+        if not pod_name or not namespace:
+            raise Exception("POD_NAME and POD_NAMESPACE environment variables must be set!")
+
+        # Get the pod information
+        pod_info = v1.read_namespaced_pod(name=pod_name, namespace=namespace)
+
+        # Retrieve the node name where the pod is running
+        node_name = pod_info.spec.node_name
+
+        print(f"Pod '{pod_name}' is running on node: {node_name}")
+        return node_name
+
+    except Exception as e:
+        print(f"Error retrieving node name: {e}")
+        return None
+
 
 def retrieve_k8s_information():
     # Load in-cluster configuration

@@ -20,7 +20,7 @@ import numpy as np
 from requests.api import get
 from kubernetes import client, config
 import random
-from utilities import retrieve_k8s_information
+from utilities import get_node_name
 import logging
 import requests
 
@@ -38,7 +38,7 @@ fisher_multiplier = 1000
 
 
 trained_model_predictions=[]
-NODE_NAME, POD  = retrieve_k8s_information()
+NODE_NAME = get_node_name()
 
 ################ USEFUL DIRECTORIES #################
 global SAVED_MODELS_PATH
@@ -64,23 +64,24 @@ while True:
     # Execute the function to run the query every 3 seconds
     print("hello")
     print(NODE_NAME)
-    print(POD)
 
+    # Query for CPU usage percentage
+    
     # Perform the HTTP request
     try:
+        # Send the query to the Prometheus API
         response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={"query": QUERY})
-        response.raise_for_status()  # Raise exception for HTTP errors
+        response.raise_for_status()  # Raise an exception for HTTP errors
 
         # Parse the JSON response
         result = response.json()
         if result["status"] == "success":
+            print("CPU Usage by Instance (Last 2 Minutes):")
             for metric in result["data"]["result"]:
-                print(f"Instance: {metric['metric'].get('instance', 'unknown')}, CPU Usage: {metric['value'][1]}")
+                instance = metric["metric"].get("instance", "unknown")
+                cpu_usage = metric["value"][1]
+                print(f"Instance: {instance}, CPU Usage: {cpu_usage}%")
         else:
             print(f"Query failed with status: {result['status']} and message: {result.get('error')}")
     except requests.exceptions.RequestException as e:
         print(f"Error querying Prometheus: {e}")
-    
-    time.sleep(10)
-
-    
