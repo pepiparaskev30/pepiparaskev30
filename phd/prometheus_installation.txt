@@ -13,6 +13,10 @@ helm uninstall prometheus -n monitoring
 kubectl get pods -n monitoring
 kubectl get daemonset -n monitoring
 kubectl get svc -n monitoring
+kubectl delete configmap -n monitoring --selector=app=prometheus
+kubectl delete secret -n monitoring --selector=app=prometheus
+kubectl delete pvc -n monitoring --selector=app=prometheus
+kubectl delete namespace monitoring
 
 
 

@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole # Role
 metadata:
   namespace: default  # The namespace where FastAPI app operates
-  name: fastapi-role
+  name: agent-role
 rules:
   - apiGroups: [""]
     resources: ["pods", "services"]
@@ -17,7 +17,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding # RoleBinding
 metadata:
-  name: fastapi-rolebinding
+  name: agent-rolebinding
   namespace: default
 subjects:
 - kind: ServiceAccount
@@ -25,7 +25,7 @@ subjects:
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: fastapi-role  # The Role we created above
+  name: agent-role  # The Role we created above
   apiGroup: rbac.authorization.k8s.io
 
 
