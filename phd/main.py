@@ -20,7 +20,7 @@ import numpy as np
 from requests.api import get
 from kubernetes import client, config
 import random
-from utilities import retrieve_k8s_information, get_prometheus_metrics
+from utilities import retrieve_k8s_information
 import logging
 import requests
 
