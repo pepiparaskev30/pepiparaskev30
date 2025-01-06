@@ -58,6 +58,31 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def check_prometheus_connection(prometheus_url):
+    # Define a simple query to test the connection (e.g., the `up` metric)
+    query_url = f"{prometheus_url}/api/v1/query"
+    params = {
+        "query": "up"
+    }
+
+    try:
+        # Send the GET request to the Prometheus API
+        response = requests.get(query_url, params=params, timeout=5)  # Add timeout for safety
+
+        # Check if the response is successful
+        if response.status_code == 200:
+            print("Connection to Prometheus established successfully.")
+            return True
+        else:
+            print(f"Error: Received status code {response.status_code} from Prometheus.")
+            print(response.text)
+            return False
+
+    except requests.exceptions.RequestException as e:
+        # Handle connection errors
+        print(f"Failed to connect to Prometheus: {e}")
+        return False
+
 def get_node_cpu_usage(prometheus_url, node_name):
     # Define the PromQL query to get the CPU usage of the specified node
     promql_query = f"""
@@ -99,5 +124,13 @@ def get_node_cpu_usage(prometheus_url, node_name):
 
 if __name__ == "__main__":
     print("Node_name", NODE_NAME)
+        # Check connection
+    if check_prometheus_connection(PROMETHEUS_URL):
+        print("Prometheus is reachable.")
+    else:
+        print("Failed to connect to Prometheus.")
+    
+    print("----------------------------------")
+    
     print(get_node_cpu_usage(NODE_NAME, PROMETHEUS_URL))
     time.sleep(2)
