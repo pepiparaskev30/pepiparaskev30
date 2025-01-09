@@ -159,4 +159,6 @@ def gather_metrics_for_15_seconds():
 
 # Example usage
 if __name__ == "__main__":
-    gather_metrics_for_15_seconds()
+    while True:
+        gather_metrics_for_15_seconds()
+        time.sleep(3)
