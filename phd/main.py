@@ -25,6 +25,8 @@ import requests
 import urllib.parse
 from datetime import datetime
 import time
+from multiprocessing import Queue
+import time
 
 
 ################ USEFUL CONSTANT VARIABLES #################
@@ -60,8 +62,7 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-from multiprocessing import Queue
-import time
+
 
 
 def data_processor(queue):
@@ -71,7 +72,7 @@ def data_processor(queue):
         # Check if data is available
         if not queue.empty():
             data_batch = queue.get()  # Retrieve data from the queue
-            print(f"Processing data batch: {data_batch}")
+            print(f"Processing data batch: {data_batch}", flush=True)
 
             # Simulate data pre-processing
             time.sleep(10)  # Simulate pre-processing time
@@ -79,7 +80,7 @@ def data_processor(queue):
             print("Finished processing data batch.\n")
         else:
             print("Waiting for new data...", flush=True)
-            time.sleep(2)  # Short wait before checking again
+            time.sleep(10)  # Short wait before checking again
 
 
 if __name__ == "__main__":
