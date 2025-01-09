@@ -30,8 +30,11 @@ RUN pip install -r requirements.txt
 
 # Copy the Python script into the container
 COPY main.py /app/main.py
-COPY test.py /app/test.py
+COPY data_generation.py /app/data_generation.py
 COPY utilities.py /app/utilities.py
 
-# Command to run the script
-CMD ["python", "test.py"]
+# Use a shell script to start both scripts
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
+CMD ["./start.sh"]
