@@ -20,7 +20,6 @@ import numpy as np
 from requests.api import get
 from kubernetes import client, config
 import random
-from utilities import get_node_name
 import logging
 import requests
 import urllib.parse
