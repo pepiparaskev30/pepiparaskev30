@@ -1,4 +1,5 @@
 from kubernetes import client, config
+import os
 
 def get_node_ip(node_name):
     # Load in-cluster configuration (inside the pod)
@@ -19,8 +20,7 @@ def get_node_ip(node_name):
 
 # Example usage
 if __name__ == "__main__":
-    # Replace with the actual node name
-    node_name = "minikube"
+    node_name = os.getenv("NODE_NAME")
     internal_ip = get_node_ip(node_name)
     if internal_ip:
         print(f"Internal IP for node {node_name}: {internal_ip}")
