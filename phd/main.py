@@ -148,7 +148,7 @@ def query_cpu_user_mode():
                 for result in results:
                     instance = result['metric'].get('instance', 'unknown')
                     value = float(result['value'][1])  # The value is a [timestamp, value] pair
-                    print(f"Instance: {instance}, User CPU Usage (%): {value:.2f}")
+                    print(f"Instance: {instance}, User CPU Usage (%): {value:.2f}", flush=True)
             else:
                 print(f"Query failed: {data.get('error')}")
         else:
@@ -162,5 +162,5 @@ while True:
     print("Node_name", NODE_NAME)
         # Check connection
     print("hello")
-    print(query_cpu_user_mode())
+    query_cpu_user_mode()
     time.sleep(2)
