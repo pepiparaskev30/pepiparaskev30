@@ -119,6 +119,9 @@ def check_prometheus_connection(prometheus_url):
 
 # Ensure PROMETHEUS_URL is defined globally or passed as a parameter
 
+# Define Prometheus server URL
+PROMETHEUS_URL = "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+
 def query_cpu_user_mode():
     # PromQL query
     query = '100 * avg(rate(node_cpu_seconds_total{mode="user"}[5m])) by (instance)'
@@ -152,8 +155,6 @@ def query_cpu_user_mode():
             print(f"Error: HTTP {response.status_code}, {response.reason}")
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}")
-
-# Run the query
 
 
 
