@@ -62,8 +62,6 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-from kubernetes import client, config
-
 def get_node_ip(node_name):
     try:
         # Load kube config (assumes kubeconfig is set up correctly)
@@ -125,7 +123,7 @@ def check_prometheus_connection(prometheus_url):
 
 def get_cpu_ts():
     # Ensure that get_node_ip and NODE_NAME are correctly defined
-    node_name_ip = f"{get_node_ip(NODE_NAME)}:9100"
+    node_name_ip = "192.168.49.2:9100"
 
     # Define the Prometheus server URL and the query
     prometheus_url = f'{PROMETHEUS_URL}:9090/api/v1/query'
