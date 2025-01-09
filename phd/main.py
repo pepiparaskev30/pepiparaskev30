@@ -78,7 +78,7 @@ def data_processor(queue):
 
             print("Finished processing data batch.\n")
         else:
-            print("Waiting for new data...")
+            print("Waiting for new data...", flush=True)
             time.sleep(2)  # Short wait before checking again
 
 
