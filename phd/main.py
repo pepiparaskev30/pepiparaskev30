@@ -68,6 +68,8 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 # Define Prometheus server URL
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 
+
+
 def query_metric(promql_query):
     # URL encode the query
     encoded_query = urllib.parse.quote(promql_query)
@@ -96,14 +98,14 @@ def query_metric(promql_query):
 
     return []
 
-def gather_metrics_for_10_seconds():
+def gather_metrics_for_15_seconds():
     cpu_query = '100 * avg(rate(node_cpu_seconds_total{mode="user"}[5m])) by (instance)'
     memory_query = '100 * (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes'
 
     start_time = time.time()
-    rows = []
+    rows = {}
 
-    while time.time() - start_time < 10:
+    while True:
         # Query CPU usage
         cpu_results = query_metric(cpu_query)
 
@@ -117,36 +119,44 @@ def gather_metrics_for_10_seconds():
         for result in cpu_results:
             instance = result['metric'].get('instance', 'unknown')
             cpu_value = float(result['value'][1])  # The value is a [timestamp, value] pair
-            rows.append({
-                'timestamp': current_time,
-                'instance': instance,
-                'metric': 'cpu_usage',
-                'value': cpu_value
-            })
+
+            if (current_time, instance) not in rows:
+                rows[(current_time, instance)] = {
+                    'timestamp': current_time,
+                    'instance': instance,
+                    'cpu_usage': cpu_value,
+                    'memory_usage': None
+                }
+            else:
+                rows[(current_time, instance)]['cpu_usage'] = cpu_value
 
         # Collect Memory usage results
         for result in memory_results:
             instance = result['metric'].get('instance', 'unknown')
             memory_value = float(result['value'][1])  # The value is a [timestamp, value] pair
-            rows.append({
-                'timestamp': current_time,
-                'instance': instance,
-                'metric': 'memory_usage',
-                'value': memory_value
-            })
 
-        # Sleep briefly to avoid excessive requests
-        time.sleep(1)
+            if (current_time, instance) not in rows:
+                rows[(current_time, instance)] = {
+                    'timestamp': current_time,
+                    'instance': instance,
+                    'cpu_usage': None,
+                    'memory_usage': memory_value
+                }
+            else:
+                rows[(current_time, instance)]['memory_usage'] = memory_value
 
-    # Create a pandas DataFrame
-    df = pd.DataFrame(rows)
-    return df
+        # Create a pandas DataFrame
+        df = pd.DataFrame(rows.values())
+
+        # Print the DataFrame if it has 10 or more rows
+        if len(df) >= 10:
+            print("\nMetrics DataFrame:")
+            print(df)
+            break
+
+        # Sleep for 15 seconds between data collection intervals
+        time.sleep(15)
 
 # Example usage
 if __name__ == "__main__":
-    while True:
-        df = gather_metrics_for_10_seconds()
-        if df is not None:
-            print("\nMetrics DataFrame:")
-            print(df)
-        time.sleep(3)
+    gather_metrics_for_15_seconds()
