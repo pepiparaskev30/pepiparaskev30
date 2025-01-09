@@ -117,86 +117,49 @@ def check_prometheus_connection(prometheus_url):
 
 
 
-
-# Assuming NODE_NAME is defined and get_node_ip is a function that fetches the node's IP address.
-# Example: NODE_NAME = 'some-node-name'
-
-import requests
-import urllib.parse
-
 # Ensure PROMETHEUS_URL is defined globally or passed as a parameter
 
-
-def get_cpu_ts():
-    # Define the node's IP (modify as per your use case)
-    node_name_ip = "192.168.49.2"
-
-    # Define the Prometheus server URL and the query
-    prometheus_url = f'{PROMETHEUS_URL}/api/v1/query'
-    query = f'100 * avg(1 - rate(node_cpu_seconds_total{{mode="idle",instance="{node_name_ip}"}}[5m])) by (instance)'
-
-    # URL encode the query to match the Prometheus format
-    encoded_query = urllib.parse.quote(query, safe='')
-
-    # Construct the full URL
-    url = f'{prometheus_url}?query={encoded_query}'
-
+def query_cpu_user_mode():
+    # PromQL query
+    query = '100 * avg(rate(node_cpu_seconds_total{mode="user"}[5m])) by (instance)'
+    
+    # URL encode the query
+    encoded_query = urllib.parse.quote(query)
+    
+    # Construct the full query URL
+    url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
+    
     try:
         # Make the GET request to Prometheus
         response = requests.get(url)
-
+        
         # Check if the request was successful
         if response.status_code == 200:
-            # Parse the JSON response
             data = response.json()
-
-            # Check if the status is 'success'
+            
+            # Check if the query was successful
             if data.get('status') == 'success':
-                # Extract the result data
-                result = data['data']['result']
-
-                # Check if there are any results
-                if result:
-                    # Collect the values and timestamps
-                    timestamps = []
-                    values = []
-
-                    for entry in result:
-                        # Each entry contains 'value' as [timestamp, value]
-                        timestamp = entry['value'][0]
-                        value = float(entry['value'][1])  # Convert value to float
-
-                        timestamps.append(timestamp)
-                        values.append(value)
-
-                    # Normalize the values to the range [0, 1]
-                    min_value = min(values)
-                    max_value = max(values)
-
-                    # Avoid division by zero in case min_value == max_value
-                    if max_value != min_value:
-                        normalized_values = [(v - min_value) / (max_value - min_value) for v in values]
-                    else:
-                        normalized_values = [0] * len(values)  # If all values are the same, normalize to 0
-
-                    # Print the timestamp and normalized value
-                    for ts, norm_val in zip(timestamps, normalized_values):
-                        print(f"Timestamp: {ts}, Normalized Value: {norm_val:.4f}")
-                else:
-                    print("No results found for the query.")
+                results = data.get('data', {}).get('result', [])
+                
+                # Print the results
+                for result in results:
+                    instance = result['metric'].get('instance', 'unknown')
+                    value = float(result['value'][1])  # The value is a [timestamp, value] pair
+                    print(f"Instance: {instance}, User CPU Usage (%): {value:.2f}")
             else:
-                print("Query failed:", data)
+                print(f"Query failed: {data.get('error')}")
         else:
-            print(f"Error: {response.status_code}, Response: {response.text}")
-
+            print(f"Error: HTTP {response.status_code}, {response.reason}")
     except requests.exceptions.RequestException as e:
-        # Handle network-related or other request exceptions
         print(f"Request failed: {e}")
+
+# Run the query
+
 
 
 while True:
     print("Node_name", NODE_NAME)
         # Check connection
     print("hello")
-    print(get_cpu_ts())
+    print(query_cpu_user_mode())
     time.sleep(2)
