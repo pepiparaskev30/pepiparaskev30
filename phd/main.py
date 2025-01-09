@@ -121,16 +121,22 @@ def check_prometheus_connection(prometheus_url):
 # Assuming NODE_NAME is defined and get_node_ip is a function that fetches the node's IP address.
 # Example: NODE_NAME = 'some-node-name'
 
+import requests
+import urllib.parse
+
+# Ensure PROMETHEUS_URL is defined globally or passed as a parameter
+
+
 def get_cpu_ts():
-    # Ensure that get_node_ip and NODE_NAME are correctly defined
+    # Define the node's IP (modify as per your use case)
     node_name_ip = "192.168.49.2"
 
     # Define the Prometheus server URL and the query
-    prometheus_url = f'{PROMETHEUS_URL}:9090/api/v1/query'
-    query = f'100*avg(1-rate(node_cpu_seconds_total{{mode="idle",instance="{node_name_ip}"}}[5m])) by (instance)'
+    prometheus_url = f'{PROMETHEUS_URL}/api/v1/query'
+    query = f'100 * avg(1 - rate(node_cpu_seconds_total{{mode="idle",instance="{node_name_ip}"}}[5m])) by (instance)'
 
-    # URL encode the query to match the query format in the curl request
-    encoded_query = urllib.parse.quote(query)
+    # URL encode the query to match the Prometheus format
+    encoded_query = urllib.parse.quote(query, safe='')
 
     # Construct the full URL
     url = f'{prometheus_url}?query={encoded_query}'
@@ -144,7 +150,7 @@ def get_cpu_ts():
             # Parse the JSON response
             data = response.json()
 
-            # Check if the status is success
+            # Check if the status is 'success'
             if data.get('status') == 'success':
                 # Extract the result data
                 result = data['data']['result']
@@ -181,7 +187,7 @@ def get_cpu_ts():
             else:
                 print("Query failed:", data)
         else:
-            print(f"Error: {response.status_code}")
+            print(f"Error: {response.status_code}, Response: {response.text}")
 
     except requests.exceptions.RequestException as e:
         # Handle network-related or other request exceptions
