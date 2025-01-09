@@ -5,6 +5,9 @@ metadata:
   name: agent-role
 rules:
   - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
     resources: ["pods", "services"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]
