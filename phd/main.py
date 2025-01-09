@@ -123,7 +123,7 @@ def check_prometheus_connection(prometheus_url):
 
 def get_cpu_ts():
     # Ensure that get_node_ip and NODE_NAME are correctly defined
-    node_name_ip = "192.168.49.2:9100"
+    node_name_ip = "192.168.49.2"
 
     # Define the Prometheus server URL and the query
     prometheus_url = f'{PROMETHEUS_URL}:9090/api/v1/query'
