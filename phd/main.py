@@ -118,11 +118,18 @@ def check_prometheus_connection(prometheus_url):
         return False
 
 
+
+
+# Assuming NODE_NAME is defined and get_node_ip is a function that fetches the node's IP address.
+# Example: NODE_NAME = 'some-node-name'
+
 def get_cpu_ts():
+    # Ensure that get_node_ip and NODE_NAME are correctly defined
     node_name_ip = f"{get_node_ip(NODE_NAME)}:9100"
+
     # Define the Prometheus server URL and the query
     prometheus_url = f'{PROMETHEUS_URL}:9090/api/v1/query'
-    query = '100*avg(1-rate(node_cpu_seconds_total{mode="idle",instance="{}"}[5m])) by (instance)'.format(node_name_ip)
+    query = f'100*avg(1-rate(node_cpu_seconds_total{{mode="idle",instance="{node_name_ip}"}}[5m])) by (instance)'
 
     # URL encode the query to match the query format in the curl request
     encoded_query = urllib.parse.quote(query)
@@ -130,53 +137,57 @@ def get_cpu_ts():
     # Construct the full URL
     url = f'{prometheus_url}?query={encoded_query}'
 
-    # Make the GET request to Prometheus
-    response = requests.get(url)
+    try:
+        # Make the GET request to Prometheus
+        response = requests.get(url)
 
-    # Check if the request was successful
-    if response.status_code == 200:
-        # Parse the JSON response
-        data = response.json()
-        
-        # Check if the status is success
-        if data.get('status') == 'success':
-            # Extract the result data
-            result = data['data']['result']
-            
-            # Check if there are any results
-            if result:
-                # Collect the values and timestamps
-                timestamps = []
-                values = []
-                
-                for entry in result:
-                    # Each entry contains 'value' as [timestamp, value]
-                    timestamp = entry['value'][0]
-                    value = float(entry['value'][1])  # Convert value to float
-                    
-                    timestamps.append(timestamp)
-                    values.append(value)
-                
-                # Normalize the values to the range [0, 1]
-                min_value = min(values)
-                max_value = max(values)
-                
-                # Avoid division by zero in case min_value == max_value
-                if max_value != min_value:
-                    normalized_values = [(v - min_value) / (max_value - min_value) for v in values]
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the JSON response
+            data = response.json()
+
+            # Check if the status is success
+            if data.get('status') == 'success':
+                # Extract the result data
+                result = data['data']['result']
+
+                # Check if there are any results
+                if result:
+                    # Collect the values and timestamps
+                    timestamps = []
+                    values = []
+
+                    for entry in result:
+                        # Each entry contains 'value' as [timestamp, value]
+                        timestamp = entry['value'][0]
+                        value = float(entry['value'][1])  # Convert value to float
+
+                        timestamps.append(timestamp)
+                        values.append(value)
+
+                    # Normalize the values to the range [0, 1]
+                    min_value = min(values)
+                    max_value = max(values)
+
+                    # Avoid division by zero in case min_value == max_value
+                    if max_value != min_value:
+                        normalized_values = [(v - min_value) / (max_value - min_value) for v in values]
+                    else:
+                        normalized_values = [0] * len(values)  # If all values are the same, normalize to 0
+
+                    # Print the timestamp and normalized value
+                    for ts, norm_val in zip(timestamps, normalized_values):
+                        print(f"Timestamp: {ts}, Normalized Value: {norm_val:.4f}")
                 else:
-                    normalized_values = [0] * len(values)  # If all values are the same, normalize to 0
-                    
-                # Print the timestamp and normalized value
-                for ts, norm_val in zip(timestamps, normalized_values):
-                    print(f"Timestamp: {ts}, Normalized Value: {norm_val:.4f}")
+                    print("No results found for the query.")
             else:
-                print("No results found for the query.")
+                print("Query failed:", data)
         else:
-            print("Query failed:", data)
-    else:
-        print(f"Error: {response.status_code}")
+            print(f"Error: {response.status_code}")
 
+    except requests.exceptions.RequestException as e:
+        # Handle network-related or other request exceptions
+        print(f"Request failed: {e}")
 
 
 while True:
