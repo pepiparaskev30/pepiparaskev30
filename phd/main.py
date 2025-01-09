@@ -49,63 +49,66 @@ global WEIGHTS_PATH
 global EVALUATION_PATH
 global NODE_NAME
 
-NODE_NAME = get_node_name()
+# Define Prometheus server URL
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+NODE_NAME = os.getenv("NODE_NAME")
 SAVED_MODELS_PATH = "./saved_models"
 WEIGHTS_PATH = "./weights_path"
 LOG_PATH_FILE = "./log_path_file"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
-
-# URLS
-
 
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-
-# Define Prometheus server URL
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
-
-
-
+# Function to query Prometheus metrics
 def query_metric(promql_query):
-    # URL encode the query
     encoded_query = urllib.parse.quote(promql_query)
-
-    # Construct the full query URL
     url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
 
     try:
-        # Make the GET request to Prometheus
         response = requests.get(url, timeout=10)
-
-        # Check if the request was successful
         if response.status_code == 200:
             data = response.json()
-
-            # Check if the query was successful
             if data.get('status') == 'success':
                 return data.get('data', {}).get('result', [])
             else:
                 print(f"Query failed: {data.get('error')}")
         else:
             print(f"Error: HTTP {response.status_code}, {response.reason}")
-
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}")
-
     return []
 
-def gather_metrics_for_15_seconds():
-    cpu_query = '100 * avg(rate(node_cpu_seconds_total{mode="user"}[5m])) by (instance)'
-    memory_query = '100 * (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes'
+# Function to retrieve the internal IP of a node by its name
+def get_node_ip_from_name(node_name):
+    config.load_incluster_config()  # Load cluster config
+    v1 = client.CoreV1Api()
+    node = v1.read_node(name=node_name)
+    for address in node.status.addresses:
+        if address.type == "InternalIP":
+            return address.address
+    return None
+
+# Function to gather metrics for 15 seconds for a specific node
+def gather_metrics_for_15_seconds(node_name):
+    # Resolve node IP from node name
+    node_ip = get_node_ip_from_name(node_name)
+    if not node_ip:
+        print(f"Could not resolve IP for node: {node_name}")
+        return
+
+    print(f"Monitoring metrics for node {node_name} (IP: {node_ip})")
+
+    # Adjust queries to filter by node's IP
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
+    memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
 
     start_time = time.time()
-    rows = {}
+    rows = []
 
-    while True:
+    while len(rows) < 10:  # Collect 10 data points
         # Query CPU usage
         cpu_results = query_metric(cpu_query)
 
@@ -115,50 +118,39 @@ def gather_metrics_for_15_seconds():
         # Collect current timestamp
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-        # Collect CPU usage results
-        for result in cpu_results:
-            instance = result['metric'].get('instance', 'unknown')
-            cpu_value = float(result['value'][1])  # The value is a [timestamp, value] pair
+        # Extract CPU and Memory usage
+        for cpu_result in cpu_results:
+            instance = cpu_result['metric'].get('instance', 'unknown')
+            cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
 
-            if (current_time, instance) not in rows:
-                rows[(current_time, instance)] = {
-                    'timestamp': current_time,
-                    'instance': instance,
-                    'cpu_usage': cpu_value,
-                    'memory_usage': None
-                }
-            else:
-                rows[(current_time, instance)]['cpu_usage'] = cpu_value
+            memory_value = None
+            for mem_result in memory_results:
+                if mem_result['metric'].get('instance') == instance:
+                    memory_value = float(mem_result['value'][1])
+                    break
 
-        # Collect Memory usage results
-        for result in memory_results:
-            instance = result['metric'].get('instance', 'unknown')
-            memory_value = float(result['value'][1])  # The value is a [timestamp, value] pair
+            rows.append({
+                "timestamp": current_time,
+                "cpu": cpu_value,
+                "mem": memory_value
+            })
 
-            if (current_time, instance) not in rows:
-                rows[(current_time, instance)] = {
-                    'timestamp': current_time,
-                    'instance': instance,
-                    'cpu_usage': None,
-                    'memory_usage': memory_value
-                }
-            else:
-                rows[(current_time, instance)]['memory_usage'] = memory_value
-
-        # Create a pandas DataFrame
-        df = pd.DataFrame(rows.values())
-
-        # Print the DataFrame if it has 10 or more rows
-        if len(df) >= 10:
-            print("\nMetrics DataFrame:")
-            print(df)
-            break
-
-        # Sleep for 15 seconds between data collection intervals
         time.sleep(15)
+
+    # Transform data into the specified format
+    data = {
+        "timestamp": [row["timestamp"] for row in rows],
+        "cpu": [row["cpu"] for row in rows],
+        "mem": [row["mem"] for row in rows]
+    }
+
+    return data
 
 # Example usage
 if __name__ == "__main__":
+    node_name = NODE_NAME # Replace with your actual node name
     while True:
-        gather_metrics_for_15_seconds()
+        data = gather_metrics_for_15_seconds(node_name)
+        print("\nMetrics Data:")
+        print(data)
         time.sleep(3)

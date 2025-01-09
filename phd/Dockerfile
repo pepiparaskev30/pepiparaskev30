@@ -34,4 +34,4 @@ COPY test.py /app/test.py
 COPY utilities.py /app/utilities.py
 
 # Command to run the script
-CMD ["python", "main.py"]
+CMD ["python", "test.py"]

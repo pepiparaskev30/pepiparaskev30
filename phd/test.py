@@ -1,5 +1,7 @@
+from datetime import time
 from kubernetes import client, config
 import os
+import time
 
 def get_node_ip(node_name):
     # Load in-cluster configuration (inside the pod)
@@ -20,9 +22,6 @@ def get_node_ip(node_name):
 
 # Example usage
 if __name__ == "__main__":
-    node_name = os.getenv("NODE_NAME")
-    internal_ip = get_node_ip(node_name)
-    if internal_ip:
-        print(f"Internal IP for node {node_name}: {internal_ip}")
-    else:
-        print(f"Could not find an internal IP for node {node_name}")
+    while True:
+        print("Hello")
+        time.sleep(10)
