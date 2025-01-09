@@ -30,6 +30,7 @@ RUN pip install -r requirements.txt
 
 # Copy the Python script into the container
 COPY main.py /app/main.py
+COPY test.py /app/test.py
 COPY utilities.py /app/utilities.py
 
 # Command to run the script
