@@ -16,7 +16,7 @@ HOST = 'localhost'
 PORT = 65432
 
 if __name__ == "__main__":
-    print("Data Generator started...")
+    print("Data Generator started...", flush=True)
 
     while True:  # Retry loop for connection
         try:

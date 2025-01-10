@@ -63,11 +63,11 @@ HOST = 'localhost'
 PORT = 65432
 
 if __name__ == "__main__":
-    print("Data Processor started...")
+    print("Data Processor started...", flush=True)
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
         server_socket.bind((HOST, PORT))
         server_socket.listen()
-        print(f"[Data Processor] Listening on {HOST}:{PORT}")
+        print(f"[Data Processor] Listening on {HOST}:{PORT}", flush=True)
         conn, addr = server_socket.accept()
         with conn:
             print(f"[Data Processor] Connected by {addr}")
@@ -76,6 +76,6 @@ if __name__ == "__main__":
                 if not data:
                     break
                 data = json.loads(data.decode('utf-8'))
-                print(f"[Data Processor] Processing data: {data}")
+                print(f"[Data Processor] Processing data: {data}", flush=True)
 
 
