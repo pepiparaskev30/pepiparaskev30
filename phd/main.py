@@ -15,18 +15,14 @@ This is the central script for the entire functionality
 
 import time, os, warnings, json
 from datetime import datetime
-import pandas as pd
-import numpy as np
-from requests.api import get
 from kubernetes import client, config
-import random
 import logging
-import requests
-import urllib.parse
 from datetime import datetime
 import time
-from multiprocessing import Queue
 import time
+import socket
+import json
+
 
 
 ################ USEFUL CONSTANT VARIABLES #################
@@ -63,29 +59,23 @@ evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-
-
-def data_processor(queue):
-    print("Data Processor started...")
-
-    while True:
-        # Check if data is available
-        if not queue.empty():
-            data_batch = queue.get()  # Retrieve data from the queue
-            print(f"Processing data batch: {data_batch}", flush=True)
-
-            # Simulate data pre-processing
-            time.sleep(10)  # Simulate pre-processing time
-
-            print("Finished processing data batch.\n")
-        else:
-            print("Waiting for new data...", flush=True)
-            time.sleep(10)  # Short wait before checking again
-
+HOST = 'localhost'
+PORT = 65432
 
 if __name__ == "__main__":
-    data_queue = Queue()  # Shared queue for inter-process communication
+    print("Data Processor started...")
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+        server_socket.bind((HOST, PORT))
+        server_socket.listen()
+        print(f"[Data Processor] Listening on {HOST}:{PORT}")
+        conn, addr = server_socket.accept()
+        with conn:
+            print(f"[Data Processor] Connected by {addr}")
+            while True:
+                data = conn.recv(1024)  # Receive data
+                if not data:
+                    break
+                data = json.loads(data.decode('utf-8'))
+                print(f"[Data Processor] Processing data: {data}")
 
-    # Start the Data Processor process
-    data_processor(data_queue)
 
