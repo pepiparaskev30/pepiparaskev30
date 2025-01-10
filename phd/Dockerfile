@@ -32,6 +32,7 @@ RUN pip install -r requirements.txt
 COPY main.py /app/main.py
 COPY data_generation.py /app/data_generation.py
 COPY utilities.py /app/utilities.py
+COPY test.py /app/test.py
 
 # Run both scripts
-CMD ["sh", "-c", "python data_generation.py & python main.py"]
+CMD ["sh", "-c", "test.py"]
