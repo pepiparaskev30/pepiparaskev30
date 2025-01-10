@@ -1,4 +1,11 @@
 from kubernetes import client, config
+import os
+import urllib.parse
+import requests
+from datetime import datetime
+import time
+
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 
 # Function to retrieve the internal IP of a node by its name
 def get_node_ip_from_name(node_name):
@@ -9,6 +16,26 @@ def get_node_ip_from_name(node_name):
         if address.type == "InternalIP":
             return address.address
     return None
+
+
+# Function to query Prometheus metrics
+def query_metric(promql_query):
+    encoded_query = urllib.parse.quote(promql_query)
+    url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
+
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 'success':
+                return data.get('data', {}).get('result', [])
+            else:
+                print(f"Query failed: {data.get('error')}")
+        else:
+            print(f"Error: HTTP {response.status_code}, {response.reason}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+    return []
 
 
 

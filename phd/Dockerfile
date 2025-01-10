@@ -33,8 +33,5 @@ COPY main.py /app/main.py
 COPY data_generation.py /app/data_generation.py
 COPY utilities.py /app/utilities.py
 
-# Use a shell script to start both scripts
-COPY start.sh /app/start.sh
-RUN chmod +x /app/start.sh
-
-CMD ["./start.sh"]
+# Run both scripts
+CMD ["sh", "-c", "python data_generation.py & python main.py"]
