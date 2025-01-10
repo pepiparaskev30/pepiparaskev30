@@ -27,9 +27,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py /app/
 COPY data_generation.py /app/
 COPY utilities.py /app/
-COPY start.sh /app/
-# Make the shell script executable
-RUN chmod +x /app/start.sh
+COPY test.py /app/
+
 WORKDIR /app
 # Set the entry point to the shell script
-CMD ["sh", "/app/start.sh"]
+CMD ["python", "test.py"]
