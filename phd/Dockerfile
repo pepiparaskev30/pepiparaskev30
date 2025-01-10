@@ -7,32 +7,27 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-#path to save the models
-WORKDIR /app/saved_models 
-#path to save the weights
-WORKDIR /app/weights_path
-#path to save the logs
-WORKDIR /app/log_path_file
-#path to save the evaluation results
-WORKDIR /app/evaluation_results
-# path to send the federated weights
-WORKDIR /app/federated_send_results
-
+# Create directories for saving files and logs
+RUN mkdir -p /app/saved_models \
+    /app/weights_path \
+    /app/log_path_file \
+    /app/evaluation_results \
+    /app/federated_send_results
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy requirements.txt first into the container
+# Copy requirements.txt into the container
 COPY requirements.txt /app/
 
-# Install the Kubernetes Python client
-RUN pip install -r requirements.txt
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the Python script into the container
-COPY main.py /app/main.py
-COPY data_generation.py /app/data_generation.py
-COPY utilities.py /app/utilities.py
-COPY test.py /app/test.py
+# Copy all Python scripts and other necessary files into the container
+COPY main.py /app/
+COPY data_generation.py /app/
+COPY utilities.py /app/
+COPY test.py /app/
 
-# Run both scripts
-CMD ["sh", "-c", "test.py"]
+# Specify the default command to run both scripts
+CMD ["python", "test.py"]
