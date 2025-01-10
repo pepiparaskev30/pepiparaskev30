@@ -29,5 +29,7 @@ COPY data_generation.py /app/
 COPY utilities.py /app/
 COPY test.py /app/
 
+WORKDIR /app
+
 # Specify the default command to run both scripts
 CMD ["python", "test.py"]
