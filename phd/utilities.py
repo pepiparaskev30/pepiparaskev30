@@ -55,7 +55,7 @@ def gather_metrics_for_15_seconds(node_name):
 
     rows = []
 
-    while len(rows) < 10:  # Collect 10 data points
+    while True:  # Collect 10 data point
         # Query CPU usage
         cpu_results = query_metric(cpu_query)
 
@@ -84,10 +84,10 @@ def gather_metrics_for_15_seconds(node_name):
 
         time.sleep(15)
 
-    # Transform data into the specified format
-    data = {
-        "timestamp": [row["timestamp"] for row in rows],
-        "cpu": [row["cpu"] for row in rows],
-        "mem": [row["mem"] for row in rows]
-    }
-    return data
+        # Transform data into the specified format
+        data = {
+            "timestamp": [row["timestamp"] for row in rows],
+            "cpu": [row["cpu"] for row in rows],
+            "mem": [row["mem"] for row in rows]
+        }
+        return data
