@@ -1,4 +1,4 @@
-docker build -t client_pod:v75 . && docker tag client_pod:v75 pepi1989/client_pod:v75 && docker push pepi1989/client_pod:v75
+docker build -t client_pod:v78 . && docker tag client_pod:v78 pepi1989/client_pod:v78 && docker push pepi1989/client_pod:v78
 kubectl apply -f agent_role_role_binding.yaml
 kubectl apply -f agent_deployment.yaml
 
@@ -11,3 +11,6 @@ watch kubectl logs <pod-name>
 
 kubectl delete -f agent_role_role_binding.yaml 
 kubectl delete -f agent_deployment.yaml
+
+#when strting deploying the appliction when the k8s hs been installed please add the node labels
+kubectl label nodes <node-name> custom-label=pepi-master
