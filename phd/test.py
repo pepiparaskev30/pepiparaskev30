@@ -11,7 +11,7 @@ SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 15)) # In Seconds
 # Main function to start the processes
 if __name__ == "__main__":
 
-    Gatherer.start_threads()
+    Gatherer.start_thread()
 
     while True:
         # Make a Scrape for the whole cluster
