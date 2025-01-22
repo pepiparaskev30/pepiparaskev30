@@ -8,4 +8,6 @@ NODE_NAME = os.getenv("NODE_NAME")
 
 # Main function to start the processes
 if __name__ == "__main__":
-    print(gather_metrics_for_15_seconds(NODE_NAME))
+    while True:
+        print(gather_metrics_for_15_seconds(NODE_NAME))
+        time.sleep(4)

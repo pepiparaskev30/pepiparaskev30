@@ -55,39 +55,36 @@ def gather_metrics_for_15_seconds(node_name):
 
     rows = []
 
-    while True:  # Collect 10 data point
-        # Query CPU usage
-        cpu_results = query_metric(cpu_query)
 
-        # Query Memory usage
-        memory_results = query_metric(memory_query)
+    cpu_results = query_metric(cpu_query)
 
-        # Collect current timestamp
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    # Query Memory usage
+    memory_results = query_metric(memory_query)
 
-        # Extract CPU and Memory usage
-        for cpu_result in cpu_results:
-            instance = cpu_result['metric'].get('instance', 'unknown')
-            cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
+    # Collect current timestamp
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            memory_value = None
-            for mem_result in memory_results:
-                if mem_result['metric'].get('instance') == instance:
-                    memory_value = float(mem_result['value'][1])
-                    break
+    # Extract CPU and Memory usage
+    for cpu_result in cpu_results:
+        instance = cpu_result['metric'].get('instance', 'unknown')
+        cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
 
-            rows.append({
-                "timestamp": current_time,
-                "cpu": cpu_value,
-                "mem": memory_value
-            })
+        memory_value = None
+        for mem_result in memory_results:
+            if mem_result['metric'].get('instance') == instance:
+                memory_value = float(mem_result['value'][1])
+                break
 
-        time.sleep(15)
+        rows.append({
+            "timestamp": current_time,
+            "cpu": cpu_value,
+            "mem": memory_value
+        })
 
-        # Transform data into the specified format
-        data = {
-            "timestamp": [row["timestamp"] for row in rows],
-            "cpu": [row["cpu"] for row in rows],
-            "mem": [row["mem"] for row in rows]
-        }
-        return data
+    # Transform data into the specified format
+    data = {
+        "timestamp": [row["timestamp"] for row in rows],
+        "cpu": [row["cpu"] for row in rows],
+        "mem": [row["mem"] for row in rows]
+    }
+    return data
