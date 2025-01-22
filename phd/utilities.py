@@ -1,4 +1,6 @@
 from kubernetes import client, config
+import threading
+from queue import Queue
 import os
 import urllib.parse
 import requests
@@ -6,6 +8,46 @@ from datetime import datetime
 import time
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+
+
+
+class Gatherer:
+    # Flag to check if the threads are ready to collect information
+    ready_flag = True
+    # Lists to store the results used by CA, RL and GNN
+    prometheus_data_queue = Queue()
+
+    # Amount of time to wait before starting a new thread
+    wait_time = int(os.getenv('WAIT_TIME', '30'))
+
+    # Start the threads
+    def start_thread():
+        # Start a CA thread
+        threading.Thread(target=Gatherer.flush_data).start()
+
+    # Start a thread and when it finishes, start another one
+    def flush_data():
+        start_time = time.time()
+        N = Gatherer.prometheus_data_queue.qsize()
+
+        data_list = []
+        for i in range(N):
+            data_list.append(Gatherer.prometheus_data_queue.get())
+
+        Gatherer.ready_flag = False
+        print(data_list, flush=True)
+        Gatherer.ready_flag = True
+
+        end_time = time.time()
+        sum_time = end_time - start_time
+
+        # If the time is less than the wait time, sleep for the difference
+        if sum_time < Gatherer.wait_time:
+            time.sleep(Gatherer.wait_time - sum_time)
+
+        # Start a new use_CA thread
+        threading.Thread(target=Gatherer.flush_data).start()
+        return
 
 # Function to retrieve the internal IP of a node by its name
 def get_node_ip_from_name(node_name):
