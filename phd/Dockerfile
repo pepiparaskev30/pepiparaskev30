@@ -12,10 +12,12 @@ RUN mkdir -p /app/saved_models \
     /app/weights_path \
     /app/log_path_file \
     /app/evaluation_results \
-    /app/federated_send_results
+    /app/federated_send_results 
 
 # Set the working directory in the container
 WORKDIR /app
+# Create an empty CSV file and add headers
+RUN echo "timestamp,cpu,mem" > /app/data_generation_path/data.csv
 
 # Copy requirements.txt into the container
 COPY requirements.txt /app/

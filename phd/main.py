@@ -53,6 +53,7 @@ SAVED_MODELS_PATH = "./saved_models"
 WEIGHTS_PATH = "./weights_path"
 LOG_PATH_FILE = "./log_path_file"
 EVALUATION_PATH = "./evaluation_results"
+DATA_GENERATION_PATH = "./data_generation_path"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
 timestamp_list, cpu_list, mem_list = [], [], []
@@ -60,16 +61,10 @@ logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.lo
 
 resource_dictionaries = [{'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}, {'timestamp': ['2025-01-27 08:32:58'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}]
 
+df = pd.Dataframe(["timestamp", "cpu", "mem"])
 
 for resource_dictionary in resource_dictionaries:
-    for k, v in resource_dictionary.items():
-        if k == "timestamp":
-            timestamp_list.append(v[0])
-        if k == "cpu":
-            cpu_list.append(v[0])
-        if k == "mem":
-            mem_list.append(v[0])
-data = {"timestamp":timestamp_list, "cpu": cpu_list, "mem": mem_list}
+
 
 
 
