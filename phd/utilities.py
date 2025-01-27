@@ -170,7 +170,7 @@ def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=10:
-        print("equal or more than 10 lines")
+        print("equal or more than 10 lines", flush=True)
     else:
-        print("more lines needed")
+        print("more lines needed", flush=True)
     
