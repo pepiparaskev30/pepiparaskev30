@@ -164,13 +164,32 @@ def count_csv_rows(path_to_csv_file):
         row_count = sum(1 for row in reader)
 
     return row_count
+
+def csv_to_dict(path_to_csv_file):
+
+    data = {
+        "timestamp": [],
+        "cpu": [],
+        "mem": []
+    }
+
+    # Read the CSV and populate the dictionary
+    with open(path_to_csv_file, mode='r', newline='') as file:
+        reader = csv.DictReader(file)
         
+        # Iterate over each row and append the values to the respective lists
+        for row in reader:
+            data["timestamp"].append(row["timestamp"])
+            data["cpu"].append(float(row["cpu"]))  # Convert cpu value to float
+            data["mem"].append(float(row["mem"]))  # Convert mem value to float
+
+    return data   
 
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=10:
-        print("equal or more than 10 lines", flush=True)
+        print(csv_to_dict(path_to_data_file), flush=True)
     else:
         print("more lines needed", flush=True)
     
