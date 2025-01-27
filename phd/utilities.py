@@ -137,7 +137,10 @@ def gather_metrics_for_15_seconds(node_name):
     return data
 
 def data_formulation(data_flushed:list, path_to_data_file):
-    # Check if the file exists to determine if we need to write the header
+    transformed_data_list = [{key: value[0] for key, value in dic.items()}
+    for dic in data_flushed
+    ]
+        # Check if the file exists to determine if we need to write the header
     file_exists = os.path.isfile(path_to_data_file)
 
     with open(path_to_data_file, mode='a', newline='') as file:
@@ -148,7 +151,7 @@ def data_formulation(data_flushed:list, path_to_data_file):
             writer.writeheader()  # Write header if file does not exist
 
         # Write all data at once
-        writer.writerows(data_flushed)
+        writer.writerows(transformed_data_list)
 
         
 
