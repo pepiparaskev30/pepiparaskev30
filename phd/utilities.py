@@ -18,7 +18,7 @@ class Gatherer:
     prometheus_data_queue = Queue()
 
     # Amount of time to wait before starting a new thread
-    wait_time = int(os.getenv('WAIT_TIME', '30'))
+    wait_time = int(os.getenv('WAIT_TIME', '55'))
 
     # Start the threads
     def start_thread():
@@ -35,7 +35,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        print(data_list, flush=True)
+        print(data_formulation(data_list), flush=True)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -89,7 +89,7 @@ def gather_metrics_for_15_seconds(node_name):
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    print(f"Monitoring metrics for node {node_name} (IP: {node_ip})")
+    #print(f"Monitoring metrics for node {node_name} (IP: {node_ip})")
 
     # Adjust queries to filter by node's IP
     cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
@@ -130,3 +130,19 @@ def gather_metrics_for_15_seconds(node_name):
         "mem": [row["mem"] for row in rows]
     }
     return data
+
+def data_formulation(data_flushed:list):
+    timestamp_list,cpu_list,mem_list  = [],[],[]
+    for resource_dictionary in data_flushed:
+        for k, v in resource_dictionary.items():
+            if k == "timestamp":
+                timestamp_list.append(v[0])
+            if k == "cpu":
+                cpu_list.append(v[0])
+            if k == "mem":
+                mem_list.append(v[0])
+    data = {"timestamp":timestamp_list, "cpu": cpu_list, "mem": mem_list}
+
+    return data 
+
+

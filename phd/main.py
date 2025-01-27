@@ -55,27 +55,21 @@ LOG_PATH_FILE = "./log_path_file"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 evaluation_csv_file = EVALUATION_PATH+"/"+'measurements.csv'
-
+timestamp_list, cpu_list, mem_list = [], [], []
 logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+resource_dictionaries = [{'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}, {'timestamp': ['2025-01-27 08:32:58'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}]
 
-HOST = 'localhost'
-PORT = 65432
 
-if __name__ == "__main__":
-    print("Data Processor started...", flush=True)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, PORT))
-        server_socket.listen()
-        print(f"[Data Processor] Listening on {HOST}:{PORT}", flush=True)
-        conn, addr = server_socket.accept()
-        with conn:
-            print(f"[Data Processor] Connected by {addr}")
-            while True:
-                data = conn.recv(1024)  # Receive data
-                if not data:
-                    break
-                data = json.loads(data.decode('utf-8'))
-                print(f"[Data Processor] Processing data: {data}", flush=True)
+for resource_dictionary in resource_dictionaries:
+    for k, v in resource_dictionary.items():
+        if k == "timestamp":
+            timestamp_list.append(v[0])
+        if k == "cpu":
+            cpu_list.append(v[0])
+        if k == "mem":
+            mem_list.append(v[0])
+data = {"timestamp":timestamp_list, "cpu": cpu_list, "mem": mem_list}
+
 
 
