@@ -40,7 +40,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        data_formulation(data_list, DATA_GENERATION_PATH)
+        preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -153,5 +153,24 @@ def data_formulation(data_flushed:list, path_to_data_file):
         # Write all data at once
         writer.writerows(transformed_data_list)
 
+def count_csv_rows(path_to_csv_file):
+    # Open the CSV file and count the number of rows
+    with open(path_to_csv_file, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        # Skip the header row
+        next(reader)
+        
+        # Count the number of rows (excluding the header)
+        row_count = sum(1 for row in reader)
+
+    return row_count
         
 
+def preprocessing(data_flush_list,path_to_data_file):
+    data_formulation(data_flush_list,path_to_data_file)
+    row_count = count_csv_rows(path_to_data_file)
+    if row_count>=10:
+        print("equal or more than 10 lines")
+    else:
+        print("more lines needed")
+    
