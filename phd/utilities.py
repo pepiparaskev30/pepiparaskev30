@@ -6,8 +6,13 @@ import urllib.parse
 import requests
 from datetime import datetime
 import time
+import csv
+
+global header
+header = ["timestamp", "cpu", "mem"]
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+DATA_GENERATION_PATH = "./data_generation_path/data.csv"
 
 
 
@@ -35,7 +40,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        print(data_formulation(data_list), flush=True)
+        data_formulation(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -131,18 +136,19 @@ def gather_metrics_for_15_seconds(node_name):
     }
     return data
 
-def data_formulation(data_flushed:list):
-    timestamp_list,cpu_list,mem_list  = [],[],[]
-    for resource_dictionary in data_flushed:
-        for k, v in resource_dictionary.items():
-            if k == "timestamp":
-                timestamp_list.append(v[0])
-            if k == "cpu":
-                cpu_list.append(v[0])
-            if k == "mem":
-                mem_list.append(v[0])
-    data = {"timestamp":timestamp_list, "cpu": cpu_list, "mem": mem_list}
+def data_formulation(data_flushed:list, path_to_data_file):
+    # Check if the file exists to determine if we need to write the header
+    file_exists = os.path.isfile(path_to_data_file)
 
-    return data 
+    with open(path_to_data_file, mode='a', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=header)
 
+        # Write the header only if the file does not exist or is empty
+        if not file_exists:
+            writer.writeheader()  # Write header if file does not exist
+
+        # Write all data at once
+        writer.writerows(data_flushed)
+
+        
 
