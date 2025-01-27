@@ -6,6 +6,7 @@ import urllib.parse
 import requests
 from datetime import datetime
 import time
+import pandas as pd
 import csv
 
 global header
@@ -185,11 +186,27 @@ def csv_to_dict(path_to_csv_file):
 
     return data   
 
+def clear_csv_content(csv_file):
+    # Read the CSV file to get the header
+    with open(csv_file, mode='r', newline='') as file:
+        reader = csv.reader(file)
+        header = next(reader)  # Get the header row
+
+    # Rewrite the CSV file with only the header
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)  # Write the header back to the file
+
+    print(f"Content of '{csv_file}' cleared, only header remains.")
+
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=10:
-        print(csv_to_dict(path_to_data_file), flush=True)
+        df = pd.DataFrame(csv_to_dict(path_to_data_file))
+        clear_csv_content(path_to_data_file)
+        print(df, flush=True)
+        
     else:
         print("more lines needed", flush=True)
     
