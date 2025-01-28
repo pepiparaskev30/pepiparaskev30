@@ -204,20 +204,6 @@ def clear_csv_content(csv_file):
 from sklearn.impute import SimpleImputer
 
 def preprocess_timeseries(data):
-    """
-    Preprocess a time series dataset with the following steps:
-    - Convert 'timestamp' to datetime format
-    - Set 'timestamp' as the index
-    - Resample the data to a 1-minute frequency
-    - Handle missing values using forward fill
-    - Return the preprocessed dataframe
-    
-    Args:
-        data (dict or pd.DataFrame): Input time series data with 'timestamp', 'cpu', and 'mem' columns.
-    
-    Returns:
-        pd.DataFrame: Preprocessed time series dataframe.
-    """
     
     # Step 1: Convert input data into a DataFrame (if not already)
     if isinstance(data, dict):
@@ -235,10 +221,7 @@ def preprocess_timeseries(data):
     df_resampled = df.resample('1T').mean()  # Resampling to 1 minute ('1T')
     
     # Step 5: Handle missing values (if any) using forward fill method
-    imputer = SimpleImputer(strategy='ffill')  # Forward fill for missing values
-    df_resampled = pd.DataFrame(imputer.fit_transform(df_resampled), 
-                                columns=df_resampled.columns, 
-                                index=df_resampled.index)
+    df_resampled = df_resampled.fillna(method='ffill')  # Forward fill for missing values
     
     # Step 6: Return the preprocessed DataFrame
     return df_resampled
