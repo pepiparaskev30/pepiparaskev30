@@ -89,6 +89,8 @@ def query_metric(promql_query):
 
 
 # Function to gather metrics for 15 seconds for a specific node
+from datetime import datetime
+
 def gather_metrics_for_15_seconds(node_name):
     # Resolve node IP from node name
     node_ip = get_node_ip_from_name(node_name)
@@ -96,24 +98,44 @@ def gather_metrics_for_15_seconds(node_name):
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    #print(f"Monitoring metrics for node {node_name} (IP: {node_ip})")
-
     # Adjust queries to filter by node's IP
     cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
+    
+    # Network bandwidth queries
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
+    
+    # Disk I/O queries
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[5m])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[5m])'
+    
+    # Disk usage query (for ext4 file systems)
+    disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
+    
+    # Load average query
+    load_query = f'node_load1{{instance="{node_ip}:9100"}}'
+    
+    # Uptime query
+    uptime_query = f'node_time_seconds{{instance="{node_ip}:9100"}}'
 
     rows = []
 
-
+    # Querying all metrics
     cpu_results = query_metric(cpu_query)
-
-    # Query Memory usage
     memory_results = query_metric(memory_query)
+    network_receive_results = query_metric(network_receive_query)
+    network_transmit_results = query_metric(network_transmit_query)
+    disk_read_results = query_metric(disk_read_query)
+    disk_write_results = query_metric(disk_write_query)
+    disk_usage_results = query_metric(disk_usage_query)
+    load_results = query_metric(load_query)
+    uptime_results = query_metric(uptime_query)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Extract CPU and Memory usage
+    # Extract CPU, Memory, Network, Disk, Load, and Uptime data
     for cpu_result in cpu_results:
         instance = cpu_result['metric'].get('instance', 'unknown')
         cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
@@ -124,20 +146,79 @@ def gather_metrics_for_15_seconds(node_name):
                 memory_value = float(mem_result['value'][1])
                 break
 
+        network_receive_value = None
+        for net_recv_result in network_receive_results:
+            if net_recv_result['metric'].get('instance') == instance:
+                network_receive_value = float(net_recv_result['value'][1])
+                break
+
+        network_transmit_value = None
+        for net_transmit_result in network_transmit_results:
+            if net_transmit_result['metric'].get('instance') == instance:
+                network_transmit_value = float(net_transmit_result['value'][1])
+                break
+
+        disk_read_value = None
+        for disk_read_result in disk_read_results:
+            if disk_read_result['metric'].get('instance') == instance:
+                disk_read_value = float(disk_read_result['value'][1])
+                break
+
+        disk_write_value = None
+        for disk_write_result in disk_write_results:
+            if disk_write_result['metric'].get('instance') == instance:
+                disk_write_value = float(disk_write_result['value'][1])
+                break
+
+        disk_usage_value = None
+        for disk_usage_result in disk_usage_results:
+            if disk_usage_result['metric'].get('instance') == instance:
+                disk_usage_value = float(disk_usage_result['value'][1])
+                break
+
+        load_value = None
+        for load_result in load_results:
+            if load_result['metric'].get('instance') == instance:
+                load_value = float(load_result['value'][1])
+                break
+
+        uptime_value = None
+        for uptime_result in uptime_results:
+            if uptime_result['metric'].get('instance') == instance:
+                uptime_value = float(uptime_result['value'][1])
+                break
+
+        # Add row with collected data
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
-            "mem": memory_value
+            "mem": memory_value,
+            "network_receive": network_receive_value,
+            "network_transmit": network_transmit_value,
+            "disk_read": disk_read_value,
+            "disk_write": disk_write_value,
+            "disk_usage": disk_usage_value,
+            "load": load_value,
+            "uptime": uptime_value
         })
 
     # Transform data into the specified format
     data = {
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
-        "mem": [row["mem"] for row in rows]
+        "mem": [row["mem"] for row in rows],
+        "network_receive": [row["network_receive"] for row in rows],
+        "network_transmit": [row["network_transmit"] for row in rows],
+        "disk_read": [row["disk_read"] for row in rows],
+        "disk_write": [row["disk_write"] for row in rows],
+        "disk_usage": [row["disk_usage"] for row in rows],
+        "load": [row["load"] for row in rows],
+        "uptime": [row["uptime"] for row in rows]
     }
+
     return data
 
+'''
 def data_formulation(data_flushed:list, path_to_data_file):
     transformed_data_list = [{key: value[0] for key, value in dic.items()}
     for dic in data_flushed
@@ -240,3 +321,4 @@ def preprocessing(data_flush_list,path_to_data_file):
 
 
     
+'''
