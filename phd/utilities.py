@@ -158,16 +158,16 @@ def gather_metrics_for_15_seconds(node_name):
         return
 
     # Adjust queries to filter by node's IP
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
     # Network bandwidth queries
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
     
     # Disk I/O queries
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[5m])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[5m])'
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
     
     # Disk usage query (for ext4 file systems)
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
@@ -328,17 +328,37 @@ def csv_to_dict(path_to_csv_file):
         reader = csv.DictReader(file)
         
         # Iterate over each row and append the values to the respective lists
+
         for row in reader:
             data["timestamp"].append(row["timestamp"])
-            data["cpu"].append(float(row["cpu"]))  # Convert cpu value to float
-            data["mem"].append(float(row["mem"]))  # Convert mem value to float
-            data["network_receive"].append(float(row["network_receive"]))
-            data["network_transmit"].append(float(row["network_transmit"]))
-            data["disk_read"].append(float(row["disk_read"]))
-            data["disk_write"].append(float(row["disk_write"]))
-            data["disk_usage"].append(float(row["disk_usage"]))
-            data["load"].append(float(row["load"]))
-            data["uptime"].append(float(row["uptime"]))
+            
+            # Check and convert the "cpu" value
+            data["cpu"].append(float(row["cpu"]) if row["cpu"] else 0.0)
+            
+            # Check and convert the "mem" value
+            data["mem"].append(float(row["mem"]) if row["mem"] else 0.0)
+            
+            # Check and convert the "network_receive" value
+            data["network_receive"].append(float(row["network_receive"]) if row["network_receive"] else 0.0)
+            
+            # Check and convert the "network_transmit" value
+            data["network_transmit"].append(float(row["network_transmit"]) if row["network_transmit"] else 0.0)
+            
+            # Check and convert the "disk_read" value
+            data["disk_read"].append(float(row["disk_read"]) if row["disk_read"] else 0.0)
+            
+            # Check and convert the "disk_write" value
+            data["disk_write"].append(float(row["disk_write"]) if row["disk_write"] else 0.0)
+            
+            # Check and convert the "disk_usage" value
+            data["disk_usage"].append(float(row["disk_usage"]) if row["disk_usage"] else 0.0)
+            
+            # Check and convert the "load" value
+            data["load"].append(float(row["load"]) if row["load"] else 0.0)
+            
+            # Check and convert the "uptime" value
+            data["uptime"].append(float(row["uptime"]) if row["uptime"] else 0.0)
+
 
     return data   
 
