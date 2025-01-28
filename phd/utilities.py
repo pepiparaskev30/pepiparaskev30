@@ -229,7 +229,7 @@ def preprocess_timeseries(data):
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
-    if row_count>=10:
+    if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
