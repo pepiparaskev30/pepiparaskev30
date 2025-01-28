@@ -82,10 +82,6 @@ resource_dictionaries = [{'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.292129
 
 
 
-df = pd.DataFrame(create_data())
-print(df)
-
-
 
 
 

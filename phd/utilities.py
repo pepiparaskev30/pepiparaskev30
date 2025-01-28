@@ -1,21 +1,85 @@
+#!/usr/bin/env python
+'''
+# Maintainer: Pepi Paraskevoulakou <e.paraskevoulakou@unipi.gr>
+# Role: Lead Developer
+# Copyright (c) 2023 Pepi Paraskevoulakou <e.paraskevoulakou@unipi.gr>
+# Licensed under the MIT License.
+# Source code development for the PhD thesis
+# Title/Name: utilities.py
+'''
+####################################################################
+'''
+Time-Series Data Collection, Preprocessing, and Causality Detection Pipeline
+This script is designed to collect time-series metrics from Prometheus, preprocess the data,
+and analyze potential causal relationships between system performance features (CPU, memory, 
+network, disk, load, uptime). The following tasks are performed:
+#
+**Metric Collection**: Gathers metrics (CPU, memory, disk I/O, network traffic, etc.) 
+from Prometheus for a given node.
+**Preprocessing**: Handles missing values, normalizes data, and performs feature engineering 
+(e.g., rate of change for CPU and memory usage).
+**Causality Testing**: Uses Granger Causality tests to identify potential causal relationships 
+between CPU, memory, and other system metrics.
+**Data Storage**: Collects and stores processed metrics into CSV files, with a limit of 30 
+data points for batch processing before clearing and preparing for the next cycle.
+#
+Key Libraries:
+- `pandas`, `numpy`: Data manipulation and analysis
+- `sklearn`: Machine learning tools, including K-Nearest Neighbors for imputation
+- `statsmodels`: Granger causality testing
+- `requests`: HTTP requests to Prometheus API
+- `kubernetes`: Interaction with Kubernetes API to gather node IP information
+
+Execution flow:
+1. Metrics are periodically retrieved via Prometheus queries for system resources.
+2. Data is preprocessed to handle missing values, scale numeric features, and generate relevant 
+features like "rate of change."
+3. Causal relationships are assessed using Granger Causality.
+4. Processed data is saved into a CSV file for further analysis or machine learning tasks.
+
+Configuration:
+- `PROMETHEUS_URL`: URL of the Prometheus server
+- `DATA_GENERATION_PATH`: Path to store collected data (e.g., "./data_generation_path/data.csv")
+- `WAIT_TIME`: Time in seconds to wait before collecting new metrics (default is 55 seconds)
+
+'''
+# Import necessary libraries
+from datetime import datetime
+import pandas as pd
+import time,os
+import numpy as np
+import csv
+from sklearn.preprocessing import LabelEncoder
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.preprocessing import StandardScaler
+from statsmodels.tsa.stattools import grangercausalitytests
+from contextlib import redirect_stdout
+from io import StringIO
+import warnings
 from kubernetes import client, config
 import threading
 from queue import Queue
-import os
 import urllib.parse
 import requests
-from datetime import datetime
-import time
-import pandas as pd
-import csv
 from sklearn.impute import SimpleImputer
 
+
+############  START logging properties #################
+#ignore information messages from terminal
+warnings.filterwarnings("ignore")
+############ END logging properties #################
+
+#module classes that helps in the pre-processing
+label_encoder = LabelEncoder()
+scaler = StandardScaler()
+
+# useful variables
 global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
 
+# useful ENV_VARIABLES
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
-
 
 
 class Gatherer:
@@ -191,7 +255,7 @@ def gather_metrics_for_15_seconds(node_name):
             "network_receive": network_receive_value,
             "network_transmit": network_transmit_value,
             "disk_read": disk_read_value,
-            "disk_write": disk_write_value,
+            "disk_write": disk_write_value if disk_write_value != "" else 0,
             "disk_usage": disk_usage_value,
             "load": load_value,
             "uptime": uptime_value
@@ -297,6 +361,9 @@ def preprocessing(data_flush_list,path_to_data_file):
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
+        data_pipeline = DataPipeline()
+        updated_df, causality_cpu, causalilty_ram=data_pipeline.preprocess_time_series_data(df)
+        print(updated_df, flush=True)
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
         print(df, flush=True)
@@ -304,3 +371,228 @@ def preprocessing(data_flush_list,path_to_data_file):
     else:
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
 
+
+
+#custom made function to apply k-nn in missing-value ts columns
+def k_nearest_neighbors(df:pd.DataFrame, col_):
+    k_neighbors = 3
+    knn = KNeighborsRegressor(n_neighbors=k_neighbors)
+
+    # Split the DataFrame into known and missing values
+    known_values = df.dropna(subset=[col_])
+    missing_values = df[df[col_].isna()]
+    # Fit the KNeighborsRegressor on known values
+    knn.fit(known_values.drop(columns=[col_]), known_values[col_])
+    # Interpolate missing values
+    interpolated_values = knn.predict(missing_values.drop(columns=[col_]))
+    # Fill in the missing values with the interpolated values
+    df.loc[df[col_].isna(), col_] = interpolated_values
+
+    return df
+
+class DataPipeline:
+    '''
+    A class representing a data processing pipeline that includes various preprocessing steps.
+    Also this class is dedicated to preparing time-series data for machine/deep learning tasks.
+    
+    Specifically includes:
+    - Missing values imputation:  Identify and handle missing data points.
+    -Scaling and Standardization: Normalize or standardize the data as required.
+    -Granger Causality Testing: Perform Granger causality tests to determine if the potential causal variable can predict or cause changes in the response variable.
+    -Feature Engineering: Engineer relevant features, including lag features for the potential causal variable.
+    -Label Encoding: To convert categorical variables into numerical values. 
+
+    '''
+
+    def __init__(self, df:pd.DataFrame):
+        self.df = df
+        self.columns = list(df.columns)
+        self.str_columns=list(df.select_dtypes(include=['object']).columns)
+        self.float_columns = list(df.select_dtypes(include=['float64']).columns)
+        self.int_columns = list(df.select_dtypes(include=['int64']).columns)
+        self.features_with_trend = []
+
+    def adjust_columns(self):
+        self.columns = list(self.df.columns)
+        self.str_columns=list(self.df.select_dtypes(include=['object']).columns)
+        self.float_columns = list(self.df.select_dtypes(include=['float64']).columns)
+        self.int_columns = list(self.df.select_dtypes(include=['int64']).columns)
+        self.features_with_trend = []
+
+    def missing_values(self):
+        threshold = 0.75
+        '''
+        ## Module to clean the data from missing values:
+        '''
+        if self.str_columns != None:
+
+            for col in self.str_columns:
+                if self.df[col].isna().mean() == 0.0:
+                    pass
+                    #print(f"[INFO]: {col}, no missing values")
+
+                else:
+                    if self.df[col].isna().mean()>threshold:
+                        #print(f"[INFO]: {col} has up to {threshold*100}% missing values, the entire column will be removed")
+                        self.df.drop(columns=col, inplace=True)
+                    else:
+                        #print(f"[INFO]: {col} has lower than {threshold*100}% missing values, we will impute the missing values")
+                        self.df[col] = self.df[col].fillna(-999)
+        else:
+            pass
+
+        if self.float_columns != None:
+            for col in self.float_columns:
+                if self.df[col].isna().mean()==0.0:
+                    pass
+                    
+                    #print(f"[INFO]: {col}, no missing values")
+
+                else:
+                    if self.df[col].isna().mean()>threshold:
+                        #print(f"[INFO]: {col} has up to {threshold*100}% missing values, the entire column will be removed")
+                        self.df.drop(columns=col, inplace=True)
+
+                    else:
+                        #print(f"[INFO]: {col} has lower than {threshold*100}% missing values, we will impute the missing values")
+                        k_nearest_neighbors(self.df, col)
+                    
+        else:
+            pass
+
+
+        if self.int_columns!= None:
+            ##to be tested for int value columns
+            for col in self.int_columns:
+                if self.df[col].isna().mean() == 0.0:
+                    pass
+                    #print(f"[INFO]: {col}, no missing values")
+
+
+                else:
+                    if self.df[col].isna().mean()>threshold:
+                        #print(f"[INFO]: {col} has up to {threshold*100}% missing values, the entire column will be removed")
+                        self.df.drop(columns=col, inplace=True)
+
+                    else:
+                        print(f"[INFO]: {col} has lower than {threshold*100}% missing values, we will impute the missing values")
+                        k_nearest_neighbors(self.df, col)
+        else:
+            pass
+
+    
+    def normalization(self):
+        self.adjust_columns()
+        '''
+        This function is responsible for normalizing float values
+        '''
+        for col in self.columns:
+            if col !="timestamp":
+                self.df[col] = scaler.fit_transform(self.df[col].values.reshape(-1, 1))
+            else:
+                pass
+    
+    def feature_engineering(self, column_name):
+        self.adjust_columns()
+        """
+        Feature Engineering for Predictive Modeling
+
+        This function performs feature engineering on a dataset to prepare it for predictive modeling tasks. 
+        Feature engineering is a crucial step in data preprocessing that involves creating, transforming, or selecting features to improve model performance.
+        
+        Speficially this function performs:
+        - Feature creation: Generates new features by combining or transforming existing features.
+ 
+        """
+
+        idx=self.df.columns.get_loc(column_name)
+        idx_col = str(idx)
+        if column_name =="cpu":
+            cpu_values = list(self.df[column_name].values)
+            rate_of_change_cpu = [x - cpu_values[i - 1] for i, x in enumerate(cpu_values)][1:]
+            final_rate_of_change_cpu = [0]
+            for element in rate_of_change_cpu:
+                final_rate_of_change_cpu.append(element)
+            self.df.insert(loc=idx+1, column='cpu_rate_of_change', value=final_rate_of_change_cpu)
+        elif column_name=="mem":
+            ram_values = list(self.df[column_name].values)
+            rate_of_change_ram = [x - ram_values[i - 1] for i, x in enumerate(ram_values)][1:]
+            final_rate_of_change_ram = [0]
+            for element in rate_of_change_ram:
+                final_rate_of_change_ram.append(element)
+            self.df.insert(loc=idx+1, column='memory_rate_of_change', value=final_rate_of_change_ram)
+    
+
+    def get_causality(self, column_name):
+        self.adjust_columns()
+        """
+        Find Causality Among Time Series Features
+
+        This function performs granger causality analysis to investigate the relationships between a target feature and a set of time series features.
+        """
+        
+        #print("Checking which attributes influence feature: {}".format(column_name))
+        causality=[]
+        for column in self.float_columns:
+            if column != column_name:
+                with StringIO() as buf, redirect_stdout(buf):
+                        granger_causality = grangercausalitytests(self.df[[column_name, column]], maxlag=[1])
+                        
+                        # Get the p-value from the result
+                        p_value = list(granger_causality.values())[0][0]['ssr_ftest'][1]
+                        
+                        if p_value < 0.05:
+                            causality.append(column)
+                        else:
+                            pass
+
+        if causality==None:
+            return 0
+        else:
+            return causality
+    
+    def erase_rate_of_change_metrics(self):
+        '''
+        Function helping to clean some past values (strongly connected with feature_engineering method)
+        '''
+        del(self.df['cpu_rate_of_change'])
+        del(self.df['memory_rate_of_change'])
+
+    
+    def preprocess_time_series_data(df:pd.DataFrame):
+        '''
+        Main function to perform all the pre-processing steps following a specific order
+        '''
+        pipeline = DataPipeline(df)
+        print("Data inserted, pre-processing process is initialized")
+        time.sleep(1)
+        print("1. Missing values detection and imputation")
+        print("===========================================")
+        pipeline.missing_values()
+        print("===========================================")
+        print("2. Feature engineering")
+        print("===========================================")
+        time.sleep(1)
+        pipeline.feature_engineering("cpu")
+        pipeline.feature_engineering("mem")
+        print("3. Normalization")
+        print("===========================================")
+        time.sleep(1)
+        pipeline.normalization()
+        causality_cpu = pipeline.get_causality(column_name="cpu")
+        print(causality_cpu)
+        if len(causality_cpu)==0:
+            causality_cpu = ['ram']
+        else:
+            pass
+        causality_ram  = pipeline.get_causality(column_name="mem")
+        if len(causality_ram)==0:
+            causality_ram = ['cpu']
+        else:
+            pass
+        #dict_data= pipeline.df.to_dict(orient='list')
+        pipeline.erase_rate_of_change_metrics()
+
+        # Print the JSON data
+        return pipeline.df,causality_cpu, causality_ram
+    
