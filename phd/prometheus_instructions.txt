@@ -1,4 +1,4 @@
-docker build -t client_pod:v125 . && docker tag client_pod:v125 pepi1989/client_pod:v125 && docker push pepi1989/client_pod:v125
+docker build -t client_pod:v126 . && docker tag client_pod:v126 pepi1989/client_pod:v126 && docker push pepi1989/client_pod:v126
 kubectl apply -f agent_role_role_binding.yaml
 kubectl apply -f agent_deployment.yaml
 
