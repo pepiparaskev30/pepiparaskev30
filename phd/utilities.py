@@ -381,8 +381,7 @@ def preprocessing(data_flush_list,path_to_data_file):
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=12:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
-        data_pipeline = DataPipeline(df)
-        updated_df, causality_cpu, causalilty_ram=data_pipeline.preprocess_time_series_data()
+        updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
         print(updated_df, flush=True)
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
@@ -579,40 +578,40 @@ class DataPipeline:
         del(self.df['memory_rate_of_change'])
 
     
-    def preprocess_time_series_data(df:pd.DataFrame):
-        '''
-        Main function to perform all the pre-processing steps following a specific order
-        '''
-        pipeline = DataPipeline(df)
-        print("Data inserted, pre-processing process is initialized")
-        time.sleep(1)
-        print("1. Missing values detection and imputation")
-        print("===========================================")
-        pipeline.missing_values()
-        print("===========================================")
-        print("2. Feature engineering")
-        print("===========================================")
-        time.sleep(1)
-        pipeline.feature_engineering("cpu")
-        pipeline.feature_engineering("mem")
-        print("3. Normalization")
-        print("===========================================")
-        time.sleep(1)
-        pipeline.normalization()
-        causality_cpu = pipeline.get_causality(column_name="cpu")
-        print(causality_cpu)
-        if len(causality_cpu)==0:
-            causality_cpu = ['ram']
-        else:
-            pass
-        causality_ram  = pipeline.get_causality(column_name="mem")
-        if len(causality_ram)==0:
-            causality_ram = ['cpu']
-        else:
-            pass
-        #dict_data= pipeline.df.to_dict(orient='list')
-        pipeline.erase_rate_of_change_metrics()
+def preprocess_time_series_data(df:pd.DataFrame):
+    '''
+    Main function to perform all the pre-processing steps following a specific order
+    '''
+    pipeline = DataPipeline(df)
+    print("Data inserted, pre-processing process is initialized")
+    time.sleep(1)
+    print("1. Missing values detection and imputation")
+    print("===========================================")
+    pipeline.missing_values()
+    print("===========================================")
+    print("2. Feature engineering")
+    print("===========================================")
+    time.sleep(1)
+    pipeline.feature_engineering("cpu")
+    pipeline.feature_engineering("mem")
+    print("3. Normalization")
+    print("===========================================")
+    time.sleep(1)
+    pipeline.normalization()
+    causality_cpu = pipeline.get_causality(column_name="cpu")
+    print(causality_cpu)
+    if len(causality_cpu)==0:
+        causality_cpu = ['ram']
+    else:
+        pass
+    causality_ram  = pipeline.get_causality(column_name="mem")
+    if len(causality_ram)==0:
+        causality_ram = ['cpu']
+    else:
+        pass
+    #dict_data= pipeline.df.to_dict(orient='list')
+    pipeline.erase_rate_of_change_metrics()
 
-        # Print the JSON data
-        return pipeline.df,causality_cpu, causality_ram
+    # Print the JSON data
+    return pipeline.df,causality_cpu, causality_ram
     
