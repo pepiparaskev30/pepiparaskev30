@@ -18,6 +18,7 @@ if __name__ == "__main__":
         try:
             cluster_sample = gather_metrics_for_15_seconds(NODE_NAME)
             print(cluster_sample)
+            Gatherer.prometheus_data_queue.put(cluster_sample)
             time.sleep(10)
             #Gatherer.flush_data()
         except Exception as err:
