@@ -23,7 +23,7 @@ spec:
                       - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v110  # Replace this with your correct image
+          image: pepi1989/client_pod:v111  # Replace this with your correct image
           env:
             - name: POD_NAME
               valueFrom:
@@ -39,3 +39,5 @@ spec:
                   fieldPath: spec.nodeName  # Dynamically gets the node name where the pod is running
             - name: PROMETHEUS_URL
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" # Add the Prometheus URL here
+            - name: DATA_GENERATION_PATH
+              value: "./data_generation_path/data.csv"

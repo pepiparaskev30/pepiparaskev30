@@ -14,7 +14,7 @@ global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
-DATA_GENERATION_PATH = "./data_generation_path/data.csv"
+DATA_GENERATION_PATH = os.getenv("DATA_GENERATION_PATH")
 
 
 
@@ -86,7 +86,6 @@ def query_metric(promql_query):
         print(f"Request failed: {e}")
     return []
 
-
 def gather_metrics_for_15_seconds(node_name):
     # Resolve node IP from node name
     node_ip = get_node_ip_from_name(node_name)
@@ -94,17 +93,25 @@ def gather_metrics_for_15_seconds(node_name):
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    # Adjust queries to filter by node's IP
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
+    # Adjust queries to filter by node's IP with a 15-second rate window
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[15s])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
     # Network bandwidth queries
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
     
+    # Additional network metrics
+    network_receive_packets_query = f'rate(node_network_receive_packets_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_transmit_packets_query = f'rate(node_network_transmit_packets_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_receive_drops_query = f'rate(node_network_receive_drop_packets_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_transmit_drops_query = f'rate(node_network_transmit_drop_packets_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_receive_errors_query = f'rate(node_network_receive_errs_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_transmit_errors_query = f'rate(node_network_transmit_errs_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+
     # Disk I/O queries
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[5m])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[5m])'
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[15s])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[15s])'
     
     # Disk usage query (for ext4 file systems)
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
@@ -122,6 +129,12 @@ def gather_metrics_for_15_seconds(node_name):
     memory_results = query_metric(memory_query)
     network_receive_results = query_metric(network_receive_query)
     network_transmit_results = query_metric(network_transmit_query)
+    network_receive_packets_results = query_metric(network_receive_packets_query)
+    network_transmit_packets_results = query_metric(network_transmit_packets_query)
+    network_receive_drops_results = query_metric(network_receive_drops_query)
+    network_transmit_drops_results = query_metric(network_transmit_drops_query)
+    network_receive_errors_results = query_metric(network_receive_errors_query)
+    network_transmit_errors_results = query_metric(network_transmit_errors_query)
     disk_read_results = query_metric(disk_read_query)
     disk_write_results = query_metric(disk_write_query)
     disk_usage_results = query_metric(disk_usage_query)
@@ -152,6 +165,42 @@ def gather_metrics_for_15_seconds(node_name):
         for net_transmit_result in network_transmit_results:
             if net_transmit_result['metric'].get('instance') == instance:
                 network_transmit_value = float(net_transmit_result['value'][1])
+                break
+
+        network_receive_packets_value = None
+        for net_recv_packets_result in network_receive_packets_results:
+            if net_recv_packets_result['metric'].get('instance') == instance:
+                network_receive_packets_value = float(net_recv_packets_result['value'][1])
+                break
+
+        network_transmit_packets_value = None
+        for net_transmit_packets_result in network_transmit_packets_results:
+            if net_transmit_packets_result['metric'].get('instance') == instance:
+                network_transmit_packets_value = float(net_transmit_packets_result['value'][1])
+                break
+
+        network_receive_drops_value = None
+        for net_recv_drops_result in network_receive_drops_results:
+            if net_recv_drops_result['metric'].get('instance') == instance:
+                network_receive_drops_value = float(net_recv_drops_result['value'][1])
+                break
+
+        network_transmit_drops_value = None
+        for net_transmit_drops_result in network_transmit_drops_results:
+            if net_transmit_drops_result['metric'].get('instance') == instance:
+                network_transmit_drops_value = float(net_transmit_drops_result['value'][1])
+                break
+
+        network_receive_errors_value = None
+        for net_recv_errors_result in network_receive_errors_results:
+            if net_recv_errors_result['metric'].get('instance') == instance:
+                network_receive_errors_value = float(net_recv_errors_result['value'][1])
+                break
+
+        network_transmit_errors_value = None
+        for net_transmit_errors_result in network_transmit_errors_results:
+            if net_transmit_errors_result['metric'].get('instance') == instance:
+                network_transmit_errors_value = float(net_transmit_errors_result['value'][1])
                 break
 
         disk_read_value = None
@@ -191,6 +240,12 @@ def gather_metrics_for_15_seconds(node_name):
             "mem": memory_value,
             "network_receive": network_receive_value,
             "network_transmit": network_transmit_value,
+            "network_receive_packets": network_receive_packets_value,
+            "network_transmit_packets": network_transmit_packets_value,
+            "network_receive_drops": network_receive_drops_value,
+            "network_transmit_drops": network_transmit_drops_value,
+            "network_receive_errors": network_receive_errors_value,
+            "network_transmit_errors": network_transmit_errors_value,
             "disk_read": disk_read_value,
             "disk_write": disk_write_value,
             "disk_usage": disk_usage_value,
@@ -205,6 +260,12 @@ def gather_metrics_for_15_seconds(node_name):
         "mem": [row["mem"] for row in rows],
         "network_receive": [row["network_receive"] for row in rows],
         "network_transmit": [row["network_transmit"] for row in rows],
+        "network_receive_packets": [row["network_receive_packets"] for row in rows],
+        "network_transmit_packets": [row["network_transmit_packets"] for row in rows],
+        "network_receive_drops": [row["network_receive_drops"] for row in rows],
+        "network_transmit_drops": [row["network_transmit_drops"] for row in rows],
+        "network_receive_errors": [row["network_receive_errors"] for row in rows],
+        "network_transmit_errors": [row["network_transmit_errors"] for row in rows],
         "disk_read": [row["disk_read"] for row in rows],
         "disk_write": [row["disk_write"] for row in rows],
         "disk_usage": [row["disk_usage"] for row in rows],
@@ -213,6 +274,7 @@ def gather_metrics_for_15_seconds(node_name):
     }
 
     return data
+
 
 
 def data_formulation(data_flushed:list, path_to_data_file):
