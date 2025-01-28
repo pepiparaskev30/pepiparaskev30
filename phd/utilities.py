@@ -11,7 +11,7 @@ import csv
 from sklearn.impute import SimpleImputer
 
 global header
-header = ["timestamp", "cpu", "mem"]
+header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
@@ -86,10 +86,6 @@ def query_metric(promql_query):
         print(f"Request failed: {e}")
     return []
 
-
-
-# Function to gather metrics for 15 seconds for a specific node
-from datetime import datetime
 
 def gather_metrics_for_15_seconds(node_name):
     # Resolve node IP from node name
@@ -218,7 +214,7 @@ def gather_metrics_for_15_seconds(node_name):
 
     return data
 
-'''
+
 def data_formulation(data_flushed:list, path_to_data_file):
     transformed_data_list = [{key: value[0] for key, value in dic.items()}
     for dic in data_flushed
@@ -253,7 +249,14 @@ def csv_to_dict(path_to_csv_file):
     data = {
         "timestamp": [],
         "cpu": [],
-        "mem": []
+        "mem": [],
+        "network_receive":[],
+        "network_transmit": [],
+        "disk_read": [],
+        "disk_write": [],
+        "disk_usage": [],
+        "load": [],
+        "uptime": []
     }
 
     # Read the CSV and populate the dictionary
@@ -265,6 +268,13 @@ def csv_to_dict(path_to_csv_file):
             data["timestamp"].append(row["timestamp"])
             data["cpu"].append(float(row["cpu"]))  # Convert cpu value to float
             data["mem"].append(float(row["mem"]))  # Convert mem value to float
+            data["network_receive"].append(float(row["network_receive"]))
+            data["network_transmit"].append(float(row["network_transmit"]))
+            data["disk_read"].append(float(row["disk_read"]))
+            data["disk_write"].append(float(row["disk_write"]))
+            data["disk_usage"].append(float(row["disk_usage"]))
+            data["load"].append(float(row["load"]))
+            data["uptime"].append(float(row["uptime"]))
 
     return data   
 
@@ -282,30 +292,6 @@ def clear_csv_content(csv_file):
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
 
-from sklearn.impute import SimpleImputer
-
-def preprocess_timeseries(data):
-    
-    # Step 1: Convert input data into a DataFrame (if not already)
-    if isinstance(data, dict):
-        df = pd.DataFrame(data)
-    else:
-        df = data.copy()
-
-    # Step 2: Convert 'timestamp' to datetime format
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
-    
-    # Step 3: Set 'timestamp' as the index
-    df.set_index('timestamp', inplace=True)
-
-    # Step 4: Resample the data to 1-minute frequency (mean of each period)
-    df_resampled = df.resample('1T').mean()  # Resampling to 1 minute ('1T')
-    
-    # Step 5: Handle missing values (if any) using forward fill method
-    df_resampled = df_resampled.fillna(method='ffill')  # Forward fill for missing values
-    
-    # Step 6: Return the preprocessed DataFrame
-    return df_resampled
 
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
@@ -314,11 +300,9 @@ def preprocessing(data_flush_list,path_to_data_file):
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
-        print(preprocess_timeseries(df), flush=True)
+        print(df, flush=True)
         
     else:
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
 
 
-    
-'''
