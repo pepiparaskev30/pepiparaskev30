@@ -39,5 +39,4 @@ spec:
                   fieldPath: spec.nodeName  # Dynamically gets the node name where the pod is running
             - name: PROMETHEUS_URL
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090" # Add the Prometheus URL here
-            - name: DATA_GENERATION_PATH
-              value: "./data_generation_path/data.csv"
+

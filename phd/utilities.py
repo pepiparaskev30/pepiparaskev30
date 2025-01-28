@@ -14,7 +14,7 @@ global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
 
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
-DATA_GENERATION_PATH = os.getenv("DATA_GENERATION_PATH")
+DATA_GENERATION_PATH = "./data_generation_path/data.csv"
 
 
 
@@ -42,6 +42,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
+        print(data_list)
         preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
