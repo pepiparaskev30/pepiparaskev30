@@ -18,7 +18,7 @@ RUN mkdir -p /app/saved_models \
 # Set the working directory in the container
 WORKDIR /app
 # Create an empty CSV file and add headers
-RUN echo "timestamp,cpu,mem" > /app/data_generation_path/data.csv
+RUN echo "timestamp,cpu,mem,network_receive,network_transmit,disk_read,disk_write,disk_usage,load,uptime" > /app/data_generation_path/data.csv
 
 # Copy requirements.txt into the container
 COPY requirements.txt /app/
