@@ -218,6 +218,7 @@ def gather_metrics_for_15_seconds(node_name):
 
     return data
 
+
 '''
 def data_formulation(data_flushed:list, path_to_data_file):
     transformed_data_list = [{key: value[0] for key, value in dic.items()}
