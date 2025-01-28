@@ -94,17 +94,17 @@ def gather_metrics_for_15_seconds(node_name):
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    # Adjust queries to filter by node's IP with 15-second rate window
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[15s])) by (instance)'
+    # Adjust queries to filter by node's IP
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[5m])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
     # Network bandwidth queries
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[15s])'
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[5m])'
     
     # Disk I/O queries
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[15s])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[15s])'
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[5m])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[5m])'
     
     # Disk usage query (for ext4 file systems)
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
@@ -214,7 +214,7 @@ def gather_metrics_for_15_seconds(node_name):
 
     return data
 
-
+'''
 
 def data_formulation(data_flushed:list, path_to_data_file):
     transformed_data_list = [{key: value[0] for key, value in dic.items()}
@@ -307,3 +307,4 @@ def preprocessing(data_flush_list,path_to_data_file):
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
 
 
+'''
