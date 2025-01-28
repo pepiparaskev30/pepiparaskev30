@@ -379,7 +379,7 @@ def clear_csv_content(csv_file):
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
-    if row_count>=30:
+    if row_count>=12:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         data_pipeline = DataPipeline()
         updated_df, causality_cpu, causalilty_ram=data_pipeline.preprocess_time_series_data(df)
