@@ -1,6 +1,6 @@
 import time
 import json, os
-from utilities import gather_metrics_for_15_seconds, Gatherer, preprocessing
+from utilities import gather_metrics_for_15_seconds, Gatherer
 from multiprocessing import Process, Queue, Event
 
 NODE_NAME = os.getenv("NODE_NAME")
