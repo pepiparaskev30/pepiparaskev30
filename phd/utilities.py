@@ -42,8 +42,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        print(data_list, flush=True)
-        #preprocessing(data_list, DATA_GENERATION_PATH)
+        preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -214,7 +213,7 @@ def gather_metrics_for_15_seconds(node_name):
 
     return data
 
-'''
+
 
 def data_formulation(data_flushed:list, path_to_data_file):
     transformed_data_list = [{key: value[0] for key, value in dic.items()}
@@ -293,7 +292,6 @@ def clear_csv_content(csv_file):
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
 
-
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
@@ -306,5 +304,3 @@ def preprocessing(data_flush_list,path_to_data_file):
     else:
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
 
-
-'''
