@@ -8,6 +8,7 @@ from datetime import datetime
 import time
 import pandas as pd
 import csv
+from sklearn.impute import SimpleImputer
 
 global header
 header = ["timestamp", "cpu", "mem"]
@@ -199,14 +200,60 @@ def clear_csv_content(csv_file):
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
+
+from sklearn.impute import SimpleImputer
+
+def preprocess_timeseries(data):
+    """
+    Preprocess a time series dataset with the following steps:
+    - Convert 'timestamp' to datetime format
+    - Set 'timestamp' as the index
+    - Resample the data to a 1-minute frequency
+    - Handle missing values using forward fill
+    - Return the preprocessed dataframe
+    
+    Args:
+        data (dict or pd.DataFrame): Input time series data with 'timestamp', 'cpu', and 'mem' columns.
+    
+    Returns:
+        pd.DataFrame: Preprocessed time series dataframe.
+    """
+    
+    # Step 1: Convert input data into a DataFrame (if not already)
+    if isinstance(data, dict):
+        df = pd.DataFrame(data)
+    else:
+        df = data.copy()
+
+    # Step 2: Convert 'timestamp' to datetime format
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    
+    # Step 3: Set 'timestamp' as the index
+    df.set_index('timestamp', inplace=True)
+
+    # Step 4: Resample the data to 1-minute frequency (mean of each period)
+    df_resampled = df.resample('1T').mean()  # Resampling to 1 minute ('1T')
+    
+    # Step 5: Handle missing values (if any) using forward fill method
+    imputer = SimpleImputer(strategy='ffill')  # Forward fill for missing values
+    df_resampled = pd.DataFrame(imputer.fit_transform(df_resampled), 
+                                columns=df_resampled.columns, 
+                                index=df_resampled.index)
+    
+    # Step 6: Return the preprocessed DataFrame
+    return df_resampled
+
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=10:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         clear_csv_content(path_to_data_file)
-        print(df, flush=True)
+        print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
+        print(preprocess_timeseries(df), flush=True)
         
     else:
-        print("more lines needed", flush=True)
+        print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
+
+
     

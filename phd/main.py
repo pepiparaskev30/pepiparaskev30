@@ -22,6 +22,25 @@ import time
 import time
 import socket
 import json
+from random import uniform
+import time
+import pandas as pd
+
+
+
+def create_data():
+    '''
+    Module that generates random data
+    '''
+    data = {
+            "timestamp": [int(time.time()) for _ in range(15)],
+            "cpu": [uniform(1.0, 10.0) for _ in range(15)],
+            "mem": [uniform(1.0, 10.0) for _ in range(15)],
+    }
+    return data
+
+
+
 
 
 
@@ -63,18 +82,11 @@ resource_dictionaries = [{'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.292129
 
 
 
-resource_dictionaries = [
-    {'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]},
-    {'timestamp': ['2025-01-27 08:32:58'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}
-]
+df = pd.DataFrame(create_data())
+print(df)
 
-# Transform the list to remove the brackets around values
-transformed_list = [
-    {key: value[0] for key, value in dic.items()}
-    for dic in resource_dictionaries
-]
 
-print(transformed_list)
+
 
 
 
