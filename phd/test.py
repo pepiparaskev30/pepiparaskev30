@@ -17,6 +17,7 @@ if __name__ == "__main__":
         # Make a Scrape for the whole cluster
         try:
             cluster_sample = gather_metrics_for_15_seconds(NODE_NAME)
+            print(cluster_sample,flush=True)
         except Exception as err:
             print(f"Unexpected Collection Error (But DP Gathering again in {SCRAPE_INTERVAL} seconds). Error: {err=}, {type(err)=}")
             time.sleep(SCRAPE_INTERVAL)
