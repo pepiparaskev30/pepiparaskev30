@@ -599,30 +599,21 @@ def preprocess_time_series_data(df:pd.DataFrame):
     pipeline = DataPipeline(df)
     print("Data inserted, pre-processing process is initialized")
     time.sleep(1)
-    print("1. Missing values detection and imputation")
+    print("1. Missing values detection and imputation", flush=True)
     print("===========================================")
     pipeline.missing_values()
     print("===========================================")
-    print("2. Feature engineering")
+    print("2. Feature engineering", flush=True)
     print("===========================================")
     time.sleep(1)
     pipeline.feature_engineering("cpu")
     pipeline.feature_engineering("mem")
-    print("3. Normalization")
+    print("3. Normalization",flush=True)
     print("===========================================")
     time.sleep(1)
     pipeline.normalization()
     causality_cpu = pipeline.get_causality(column_name="cpu")
-    print(causality_cpu)
-    if len(causality_cpu)==0:
-        causality_cpu = ['ram']
-    else:
-        pass
     causality_ram  = pipeline.get_causality(column_name="mem")
-    if len(causality_ram)==0:
-        causality_ram = ['cpu']
-    else:
-        pass
     #dict_data= pipeline.df.to_dict(orient='list')
     pipeline.erase_rate_of_change_metrics()
 
