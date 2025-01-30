@@ -89,7 +89,7 @@ class Gatherer:
     prometheus_data_queue = Queue()
 
     # Amount of time to wait before starting a new thread
-    wait_time = int(os.getenv('WAIT_TIME', '10'))
+    wait_time = int(os.getenv('WAIT_TIME', '30'))
 
     # Start the threads
     def start_thread():
