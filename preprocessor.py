@@ -47,12 +47,11 @@ class Gatherer:
         if sum_time < Gatherer.wait_time:
             time.sleep(Gatherer.wait_time - sum_time)
 
-        # Start a new use_CA thread
         threading.Thread(target=Gatherer.data_).start()
         return
     
 
-# Wait until the Codeco application is deployed
+
 
 Gatherer.start_thread()
 

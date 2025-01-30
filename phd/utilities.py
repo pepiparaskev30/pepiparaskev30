@@ -150,26 +150,26 @@ def query_metric(promql_query):
         print(f"Request failed: {e}")
     return []
 
-def gather_metrics_for_15_seconds(node_name):
+def gather_metrics_for_30_seconds(node_name):
     # Resolve node IP from node name
     node_ip = get_node_ip_from_name(node_name)
     if not node_ip:
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    # Adjust queries to filter by node's IP
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m])) by (instance)'
+    # Adjust queries to filter by node's IP and use 30-second interval
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[30s])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
-    # Network bandwidth queries
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+    # Network bandwidth queries with 30s interval
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[30s])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[30s])'
     
-    # Disk I/O queries
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+    # Disk I/O queries with 30s interval
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[30s])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[30s])'
     
-    # Disk usage query (for ext4 file systems)
+    # Disk usage query (for ext4 file systems) with 30s interval
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
     
     # Load average query
@@ -276,6 +276,7 @@ def gather_metrics_for_15_seconds(node_name):
     }
 
     return data
+
 
 
 
