@@ -106,7 +106,8 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        preprocessing(data_list, DATA_GENERATION_PATH)
+        print(data_list)
+        #preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
