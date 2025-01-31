@@ -11,8 +11,9 @@ SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 1)) # In Seconds
 # Main function to start the processes
 if __name__ == "__main__":
 
-    print({"data": "values"})
-    time.sleep(10)
+    while True:
+        print({"data": "values"})
+        time.sleep(10)
 '''
     Gatherer.start_thread()
 
