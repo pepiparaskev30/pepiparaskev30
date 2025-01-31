@@ -89,7 +89,7 @@ class Gatherer:
     prometheus_data_queue = Queue()
 
     # Amount of time to wait before starting a new thread
-    wait_time = int(os.getenv('WAIT_TIME', '30'))
+    wait_time = int(os.getenv('WAIT_TIME', '10'))
 
     # Start the threads
     def start_thread():
@@ -106,7 +106,8 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        preprocessing(data_list, DATA_GENERATION_PATH)
+        print(data_list, flush=True)
+        #preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -157,30 +158,30 @@ def gather_metrics_for_30_seconds(node_name):
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    # Adjust queries to filter by node's IP
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m])) by (instance)'
+    # Adjust queries to filter by node's IP with a 1-second interval
+    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1s])) by (instance)'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
-    # Network bandwidth queries
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+    # Network bandwidth queries with a 1-second interval
+    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
+    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
     
-    # Disk I/O queries
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+    # Disk I/O queries with a 1-second interval
+    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1s])'
+    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1s])'
     
-    # Disk usage query (for ext4 file systems)
+    # Disk usage query (for ext4 file systems) with a 1-second interval
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
     
-    # Load average query
+    # Load average query with a 1-second interval
     load_query = f'node_load1{{instance="{node_ip}:9100"}}'
     
-    # Uptime query
+    # Uptime query with a 1-second interval
     uptime_query = f'node_time_seconds{{instance="{node_ip}:9100"}}'
 
     rows = []
 
-    # Querying all metrics
+    # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(cpu_query)
     memory_results = query_metric(memory_query)
     network_receive_results = query_metric(network_receive_query)
@@ -276,6 +277,7 @@ def gather_metrics_for_30_seconds(node_name):
     }
 
     return data
+
 
 
 
