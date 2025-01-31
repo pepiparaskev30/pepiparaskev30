@@ -133,9 +133,12 @@ def get_node_ip_from_name(node_name):
 
 
 # Function to query Prometheus metrics
-def query_metric(PROMETHEUS_URL, promql_query):
+def query_metric(prometheus_url, promql_query):
+    # URL-encode the Prometheus query
     encoded_query = urllib.parse.quote(promql_query)
-    url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
+    
+    # Construct the full Prometheus API URL
+    url = f"{prometheus_url}/api/v1/query?query={encoded_query}"
 
     try:
         response = requests.get(url, timeout=10)
@@ -151,38 +154,15 @@ def query_metric(PROMETHEUS_URL, promql_query):
         print(f"Request failed: {e}")
     return []
 
-import requests
-import urllib.parse
-from datetime import datetime
-
-def query_metric(promql_query):
-    encoded_query = urllib.parse.quote(promql_query)
-    url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
-
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('status') == 'success':
-                return data.get('data', {}).get('result', [])
-            else:
-                print(f"Query failed: {data.get('error')}")
-        else:
-            print(f"Error: HTTP {response.status_code}, {response.reason}")
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
-    return []
-
-def gather_metrics_for_30_seconds(node_name):
-    # Resolve node IP from node name
+# Function to gather various metrics for 30 seconds
+def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
+    # Resolve node IP from node name (assuming a function to resolve node IP)
     node_ip = get_node_ip_from_name(node_name)
     if not node_ip:
         print(f"Could not resolve IP for node: {node_name}")
         return
 
-    # Adjust the Prometheus URL to include http://
-
-    # Adjust queries to filter by node's IP with a 1-second interval
+    # Define the queries with the node's IP
     cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
     
@@ -206,20 +186,20 @@ def gather_metrics_for_30_seconds(node_name):
     rows = []
 
     # Querying all metrics with 1-second scrape intervals
-    cpu_results = query_metric(cpu_query)
-    memory_results = query_metric(memory_query)
-    network_receive_results = query_metric(network_receive_query)
-    network_transmit_results = query_metric(network_transmit_query)
-    disk_read_results = query_metric(disk_read_query)
-    disk_write_results = query_metric(disk_write_query)
-    disk_usage_results = query_metric(disk_usage_query)
-    load_results = query_metric(load_query)
-    uptime_results = query_metric(uptime_query)
+    cpu_results = query_metric(prometheus_url, cpu_query)
+    memory_results = query_metric(prometheus_url, memory_query)
+    network_receive_results = query_metric(prometheus_url, network_receive_query)
+    network_transmit_results = query_metric(prometheus_url, network_transmit_query)
+    disk_read_results = query_metric(prometheus_url, disk_read_query)
+    disk_write_results = query_metric(prometheus_url, disk_write_query)
+    disk_usage_results = query_metric(prometheus_url, disk_usage_query)
+    load_results = query_metric(prometheus_url, load_query)
+    uptime_results = query_metric(prometheus_url, uptime_query)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Extract CPU, Memory, Network, Disk, Load, and Uptime data
+    # Extract data from results and associate each metric with the correct instance
     for cpu_result in cpu_results:
         instance = cpu_result['metric'].get('instance', 'unknown')
         cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
@@ -272,7 +252,7 @@ def gather_metrics_for_30_seconds(node_name):
                 uptime_value = float(uptime_result['value'][1])
                 break
 
-        # Add row with collected data
+        # Add the collected data as a new row
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
@@ -301,7 +281,6 @@ def gather_metrics_for_30_seconds(node_name):
     }
 
     return data
-
 
 
 
