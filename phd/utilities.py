@@ -80,7 +80,7 @@ header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "dis
 # useful ENV_VARIABLES
 
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
-
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -155,7 +155,7 @@ import requests
 import urllib.parse
 from datetime import datetime
 
-def query_metric(PROMETHEUS_URL, promql_query):
+def query_metric(promql_query):
     encoded_query = urllib.parse.quote(promql_query)
     url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
 
@@ -181,7 +181,6 @@ def gather_metrics_for_30_seconds(node_name):
         return
 
     # Adjust the Prometheus URL to include http://
-    PROMETHEUS_URL = f'http://{node_ip}:30000'
 
     # Adjust queries to filter by node's IP with a 1-second interval
     cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
@@ -207,15 +206,15 @@ def gather_metrics_for_30_seconds(node_name):
     rows = []
 
     # Querying all metrics with 1-second scrape intervals
-    cpu_results = query_metric(PROMETHEUS_URL, cpu_query)
-    memory_results = query_metric(PROMETHEUS_URL, memory_query)
-    network_receive_results = query_metric(PROMETHEUS_URL, network_receive_query)
-    network_transmit_results = query_metric(PROMETHEUS_URL, network_transmit_query)
-    disk_read_results = query_metric(PROMETHEUS_URL, disk_read_query)
-    disk_write_results = query_metric(PROMETHEUS_URL, disk_write_query)
-    disk_usage_results = query_metric(PROMETHEUS_URL, disk_usage_query)
-    load_results = query_metric(PROMETHEUS_URL, load_query)
-    uptime_results = query_metric(PROMETHEUS_URL, uptime_query)
+    cpu_results = query_metric(cpu_query)
+    memory_results = query_metric(memory_query)
+    network_receive_results = query_metric(network_receive_query)
+    network_transmit_results = query_metric(network_transmit_query)
+    disk_read_results = query_metric(disk_read_query)
+    disk_write_results = query_metric(disk_write_query)
+    disk_usage_results = query_metric(disk_usage_query)
+    load_results = query_metric(load_query)
+    uptime_results = query_metric(uptime_query)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
