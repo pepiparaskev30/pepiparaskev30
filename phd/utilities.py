@@ -151,26 +151,49 @@ def query_metric(PROMETHEUS_URL, promql_query):
         print(f"Request failed: {e}")
     return []
 
+import requests
+import urllib.parse
+from datetime import datetime
+
+def query_metric(PROMETHEUS_URL, promql_query):
+    encoded_query = urllib.parse.quote(promql_query)
+    url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
+
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            if data.get('status') == 'success':
+                return data.get('data', {}).get('result', [])
+            else:
+                print(f"Query failed: {data.get('error')}")
+        else:
+            print(f"Error: HTTP {response.status_code}, {response.reason}")
+    except requests.exceptions.RequestException as e:
+        print(f"Request failed: {e}")
+    return []
+
 def gather_metrics_for_30_seconds(node_name):
     # Resolve node IP from node name
     node_ip = get_node_ip_from_name(node_name)
-    PROMETHEUS_URL = f'{node_ip}:30000'
     if not node_ip:
         print(f"Could not resolve IP for node: {node_name}")
         return
 
+    # Adjust the Prometheus URL to include http://
+    PROMETHEUS_URL = f'http://{node_ip}:30000'
+
     # Adjust queries to filter by node's IP with a 1-second interval
-    cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
-
+    cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1s]))'
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
-
+    
     # Network Bandwidth Queries (with 1-second interval)
-    network_receive_query = f'irate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
-    network_transmit_query = f'irate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+    network_receive_query = f'irate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
+    network_transmit_query = f'irate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
 
     # Disk I/O Queries (with 1-second interval)
-    disk_read_query = f'irate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
-    disk_write_query = f'irate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+    disk_read_query = f'irate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1s])'
+    disk_write_query = f'irate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1s])'
 
     # Disk Usage Query (for ext4 file systems)
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
@@ -181,19 +204,18 @@ def gather_metrics_for_30_seconds(node_name):
     # Uptime Query
     uptime_query = f'node_time_seconds{{instance="{node_ip}:9100"}}'
 
-
     rows = []
 
     # Querying all metrics with 1-second scrape intervals
-    cpu_results = query_metric(PROMETHEUS_URL,cpu_query)
-    memory_results = query_metric(PROMETHEUS_URL,memory_query)
-    network_receive_results = query_metric(PROMETHEUS_URL,network_receive_query)
-    network_transmit_results = query_metric(PROMETHEUS_URL,network_transmit_query)
-    disk_read_results = query_metric(PROMETHEUS_URL,disk_read_query)
-    disk_write_results = query_metric(PROMETHEUS_URL,disk_write_query)
-    disk_usage_results = query_metric(PROMETHEUS_URL,disk_usage_query)
-    load_results = query_metric(PROMETHEUS_URL,load_query)
-    uptime_results = query_metric(PROMETHEUS_URL,uptime_query)
+    cpu_results = query_metric(PROMETHEUS_URL, cpu_query)
+    memory_results = query_metric(PROMETHEUS_URL, memory_query)
+    network_receive_results = query_metric(PROMETHEUS_URL, network_receive_query)
+    network_transmit_results = query_metric(PROMETHEUS_URL, network_transmit_query)
+    disk_read_results = query_metric(PROMETHEUS_URL, disk_read_query)
+    disk_write_results = query_metric(PROMETHEUS_URL, disk_write_query)
+    disk_usage_results = query_metric(PROMETHEUS_URL, disk_usage_query)
+    load_results = query_metric(PROMETHEUS_URL, load_query)
+    uptime_results = query_metric(PROMETHEUS_URL, uptime_query)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -280,6 +302,7 @@ def gather_metrics_for_30_seconds(node_name):
     }
 
     return data
+
 
 
 
