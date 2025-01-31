@@ -78,7 +78,7 @@ global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
 
 # useful ENV_VARIABLES
-PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
 
 
@@ -133,7 +133,7 @@ def get_node_ip_from_name(node_name):
 
 
 # Function to query Prometheus metrics
-def query_metric(promql_query):
+def query_metric(PROMETHEUS_URL, promql_query):
     encoded_query = urllib.parse.quote(promql_query)
     url = f"{PROMETHEUS_URL}/api/v1/query?query={encoded_query}"
 
@@ -154,43 +154,46 @@ def query_metric(promql_query):
 def gather_metrics_for_30_seconds(node_name):
     # Resolve node IP from node name
     node_ip = get_node_ip_from_name(node_name)
+    PROMETHEUS_URL = f'{node_ip}:30000'
     if not node_ip:
         print(f"Could not resolve IP for node: {node_name}")
         return
 
     # Adjust queries to filter by node's IP with a 1-second interval
-    cpu_query = f'100 * avg(rate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1s])) by (instance)'
+    cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
+
     memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
-    
-    # Network bandwidth queries with a 1-second interval
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1s])'
-    
-    # Disk I/O queries with a 1-second interval
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1s])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1s])'
-    
-    # Disk usage query (for ext4 file systems) with a 1-second interval
+
+    # Network Bandwidth Queries (with 1-second interval)
+    network_receive_query = f'irate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+    network_transmit_query = f'irate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
+
+    # Disk I/O Queries (with 1-second interval)
+    disk_read_query = f'irate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+    disk_write_query = f'irate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
+
+    # Disk Usage Query (for ext4 file systems)
     disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
-    
-    # Load average query with a 1-second interval
+
+    # Load Average Query
     load_query = f'node_load1{{instance="{node_ip}:9100"}}'
-    
-    # Uptime query with a 1-second interval
+
+    # Uptime Query
     uptime_query = f'node_time_seconds{{instance="{node_ip}:9100"}}'
+
 
     rows = []
 
     # Querying all metrics with 1-second scrape intervals
-    cpu_results = query_metric(cpu_query)
-    memory_results = query_metric(memory_query)
-    network_receive_results = query_metric(network_receive_query)
-    network_transmit_results = query_metric(network_transmit_query)
-    disk_read_results = query_metric(disk_read_query)
-    disk_write_results = query_metric(disk_write_query)
-    disk_usage_results = query_metric(disk_usage_query)
-    load_results = query_metric(load_query)
-    uptime_results = query_metric(uptime_query)
+    cpu_results = query_metric(PROMETHEUS_URL,cpu_query)
+    memory_results = query_metric(PROMETHEUS_URL,memory_query)
+    network_receive_results = query_metric(PROMETHEUS_URL,network_receive_query)
+    network_transmit_results = query_metric(PROMETHEUS_URL,network_transmit_query)
+    disk_read_results = query_metric(PROMETHEUS_URL,disk_read_query)
+    disk_write_results = query_metric(PROMETHEUS_URL,disk_write_query)
+    disk_usage_results = query_metric(PROMETHEUS_URL,disk_usage_query)
+    load_results = query_metric(PROMETHEUS_URL,load_query)
+    uptime_results = query_metric(PROMETHEUS_URL,uptime_query)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -277,8 +280,6 @@ def gather_metrics_for_30_seconds(node_name):
     }
 
     return data
-
-
 
 
 

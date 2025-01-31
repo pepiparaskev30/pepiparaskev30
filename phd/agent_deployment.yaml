@@ -23,7 +23,7 @@ spec:
                       - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v142  # Replace this with your correct image
+          image: pepi1989/client_pod:v143  # Replace this with your correct image
           env:
             - name: POD_NAME
               valueFrom:
@@ -37,6 +37,5 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName  # Dynamically gets the node name where the pod is running
-            - name: PROMETHEUS_URL
-              value: http://prometheus-service:8080 # Add the Prometheus URL here
+
 
