@@ -34,4 +34,4 @@ COPY test.py /app/
 
 WORKDIR /app
 # Set the entry point to the shell script
-CMD ["python", "test.py"]
+CMD ["python", "main.py"]

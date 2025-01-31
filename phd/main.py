@@ -79,8 +79,9 @@ timestamp_list, cpu_list, mem_list = [], [], []
 #logging.basicConfig(filename=LOG_PATH_FILE+"/"+f'info_file_{current_datetime}.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 resource_dictionaries = [{'timestamp': ['2025-01-27 08:32:43'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}, {'timestamp': ['2025-01-27 08:32:58'], 'cpu': [4.2921296296279055], 'mem': [34.5519825762939]}]
-
-
+data = create_data()
+print(data, flush=True)
+time.sleep(10)
 
 
 
