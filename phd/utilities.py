@@ -224,14 +224,7 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    # Debugging: Log results to verify the queries
-    print(f"CPU Results: {cpu_results}")
-    print(f"Memory Results: {memory_results}")
-    print(f"Network Results: {network_receive_results}, {network_transmit_results}")
-    print(f"Disk Results: {disk_read_results}, {disk_write_results}")
-    print(f"Disk Usage Results: {disk_usage_results}")
-    print(f"Load Results: {load_results}")
-    print(f"Uptime Results: {uptime_results}")
+
 
     # Extract data from results and associate each metric with the correct instance
     for cpu_result in cpu_results:
