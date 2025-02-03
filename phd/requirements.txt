@@ -14,7 +14,7 @@ scipy==1.10.1
 seaborn==0.13.0
 statsmodels==0.14.0
 sympy==1.12
-tensorboard==2.14.0
+tensorboard==2.13.1
 tensorflow==2.13.1
 thread
 torch==2.1.1
