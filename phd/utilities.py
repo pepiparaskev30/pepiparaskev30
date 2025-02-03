@@ -202,6 +202,65 @@ def get_memory_usage(node_ip):
         print(f"Error: {response.status_code} - {response.text}")
         return 0
 
+
+def get_network_receive_rate(node_ip):
+    # Define the Prometheus URL and the query to get network receive rate on eth0
+    query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100",device="eth0"}}[1m])'
+
+    # Make the API call to Prometheus
+    response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params={'query': query})
+
+    if response.status_code == 200:
+        result = response.json()
+
+        # Check if the result contains any data
+        if result["status"] == "success" and result["data"]["result"]:
+            # Extract the rate value from the result
+            value = result["data"]["result"][0]["value"][1]
+            return float(value)
+        else:
+            print(f"No data returned for node {node_ip}", flush=True)
+            return 0
+    else:
+        print(f"Failed to query Prometheus: {response.status_code}", flush=True)
+        return 0
+
+
+import requests
+
+def get_network_transmit_rate(node_ip):
+    # Define the Prometheus URL and the query to get network transmit rate on eth0
+    query = f'rate(node_network_transmit_packets_total{{instance="{node_ip}:9100",device="eth0"}}[1m])'
+
+    # Make the API call to Prometheus
+    response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params={'query': query})
+
+    if response.status_code == 200:
+        result = response.json()
+
+        # Check if the result contains any data
+        if result["status"] == "success" and result["data"]["result"]:
+            # Extract the rate value from the result (for eth0 device)
+            value = result["data"]["result"][0]["value"][1]
+            return float(value)
+        else:
+            print(f"No data returned for node {node_ip}", flush=True)
+            return 0
+    else:
+        print(f"Failed to query Prometheus: {response.status_code}", flush=True)
+        return 0
+
+def get_node_load(node_ip):
+    query = f'node_load1{{instance="{node_ip}:9100"}}'
+    response = requests.get(PROMETHEUS_URL, params={'query': query})
+    
+    if response.status_code == 200:
+        result = response.json()
+        if result['status'] == 'success':
+            value = result['data']['result'][0]['value'][1]  # The load value is in the second element of the 'value' array
+            return float(value)
+    return 0
+
 # Function to gather various metrics for 30 seconds
 def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Resolve node IP from node name (assuming a function to resolve node IP)
@@ -219,6 +278,9 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(prometheus_url, cpu_query)
     memory_value = get_memory_usage(node_ip)
+    network_receive_rate = get_network_receive_rate(node_ip)
+    network_transmit_rate = get_network_transmit_rate(node_ip)
+    load_value = get_node_load(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -234,7 +296,10 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
-            "mem": memory_value
+            "mem": memory_value, 
+            "network_receive_rate": network_receive_rate, 
+            "network_transmit_rate": network_transmit_rate,
+            "load": load_value
         })
 
     # Transform data into the specified format
@@ -242,6 +307,9 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
         "mem": [row["mem"] for row in rows],
+        "network_receive_rate": [row["network_receive_rate"] for row in rows], 
+        "network_transmit_rate": [row["network_transmit_rate"] for row in rows], 
+        "load": [row["load"] for row in rows]
     }
 
     return data
