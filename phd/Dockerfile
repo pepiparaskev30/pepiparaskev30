@@ -13,7 +13,10 @@ RUN mkdir -p /app/saved_models \
     /app/log_path_file \
     /app/evaluation_results \
     /app/federated_send_results \
-    /app/data_generation_path
+    /app/data_generation_path \
+    /app/json_weights \ 
+    /app/federated_received_results \
+    /app/federated_send_results 
 
 # Set the working directory in the container
 WORKDIR /app
@@ -32,6 +35,10 @@ COPY data_generation.py /app/
 COPY utilities.py /app/
 COPY test.py /app/
 COPY LSTM_attention_model_training.py /app/
+COPY training_materials.py /app/
+COPY elasticweightconsolidation.py /app/
+COPY evaluation_matrics.py /app/
+
 
 WORKDIR /app
 # Set the entry point to the shell script

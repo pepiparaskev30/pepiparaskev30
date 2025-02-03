@@ -46,7 +46,7 @@ Configuration:
 # Import necessary libraries
 from datetime import datetime
 import pandas as pd
-import time,os
+import time,os, json
 import numpy as np
 import csv
 from sklearn.preprocessing import LabelEncoder
@@ -64,7 +64,10 @@ import requests
 import logging
 import tensorflow as tf
 from sklearn.impute import SimpleImputer
-from LSTM_attention_model_training import DeepNeuralNetwork_Controller
+from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
+from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
+from training_materials import load_keras_model
+from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
 
 
 ############  START logging properties #################
@@ -98,10 +101,14 @@ iterator = 0
 epochs = 10
 fisher_multiplier = 1000
 # useful ENV_VARIABLES
-
+NODE_NAME = os.getenv("NODE_NAME")
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 SAVED_MODELS_PATH = "./saved_models"
+WEIGHTS_PATH = "./json_weights"
+FEDERATED_WEIGHTS_PATH_RECEIVE = "./federated_received_results"
+FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
+EVALUATION_PATH = "./evaluation_results"
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -434,6 +441,36 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
     for epoch in range(num_epochs):
         logging.info(f"Model started training, is on {epoch+1} epoch")
 
+        simple_model.fit(train_x, train_y, epochs=epoch+1, verbose=1)  # Perform 'epoch+1' epochs of training
+
+        # Validation step
+        print("-----------------")
+        val_loss = simple_model.evaluate(validation_x, validation_y, verbose=0)
+        logging.info(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
+        print(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
+
+        # Check if validation loss has improved
+        if val_loss < early_stopping["best_val_loss"]:
+            early_stopping["best_val_loss"] = val_loss
+            early_stopping["no_improvement_count"] = 0
+        else:
+            early_stopping["no_improvement_count"] += 1
+
+        # Check if training should stop early
+        if early_stopping["no_improvement_count"] >= early_stopping["patience"]:
+            logging.info(f'Early stopping after {epoch + 1} epochs.')
+            break
+
+    predictions = simple_model.predict(validation_x)
+    print(predictions, flush=True)
+    mse = calculate_mse(predictions, validation_y)
+    rmse = calculate_rmse(mse)
+    r2_score = calculate_r2_score(validation_y, predictions)
+    append_to_csv(EVALUATION_PATH, target_resource, mse, rmse, r2_score)
+    print("metrics saved...")
+
+    return simple_model
+
 def clear_csv_content(csv_file):
     # Read the CSV file to get the header
     with open(csv_file, mode='r', newline='') as file:
@@ -452,15 +489,26 @@ def preprocessing(data_flush_list,path_to_data_file):
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
-        updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
-        features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
-        features_cpu =['mem']
-        features_ram = ['cpu']
-        init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
-        for target_resource in targets:
-            init_training_based_on_resource(init_training_, target_resource, early_stopping)
-            print("YOU DID IT!!!!!")
-            time.sleep(100)
+        for i in range(0,3):
+            if iterator == 0:
+                updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
+                features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
+                features_cpu =['mem']
+                features_ram = ['cpu']
+                init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
+                for target_resource in targets:
+                    init_training_based_on_resource(init_training_, target_resource, early_stopping)
+                    print("Initial training completed")
+                    time.sleep(2)
+            elif iterator>=1:
+                print("Incremental procedure started", flush=True)
+                updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
+                incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+                for target_resource in targets:
+                    iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
+                print("DONEEEEE SO FAR!")
+                time.sleep(1000)
+
 
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
@@ -482,6 +530,162 @@ def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame
         features_ram = causality_ram
     
     return features_cpu, features_ram
+
+def incremental_training(incremental_training_, target_resource, iterator):
+    print("============ INCREMENTAL PROCEDURE =======================", flush=True)
+
+    # Load old model and obtain its weights
+    old_model_file = SAVED_MODELS_PATH + "/" + "model_" + target_resource + ".keras"
+    training_incremental_df = incremental_training_.df_reformulation(target_resource)
+    train_x, train_y, validation_x, validation_y = incremental_training_.train_test_split_(training_incremental_df, sequence_length)
+
+    # Load the old model and apply weights
+    incremental_model = load_keras_model(old_model_file, custom_objects={'Attention': Attention})
+    weights_file = WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5"
+    incremental_model.save_weights(weights_file)
+    print("weights saved", flush=True)
+    time.sleep(10)
+    logging.info(f"model: {incremental_model} loaded")
+
+    # Apply federated weights if they exist
+    if len(os.listdir(FEDERATED_WEIGHTS_PATH_RECEIVE)) != 0 and len(os.listdir(FEDERATED_WEIGHTS_PATH_RECEIVE)) == 1:
+        if file_contains_word(FEDERATED_WEIGHTS_PATH_RECEIVE, target_resource):
+            incremental_model = update_model_with_federated_weights(incremental_model, target_resource)
+
+    # Create dataset, set drop_remainder=True to ensure batch consistency
+    dataset_current_task = tf.data.Dataset.from_tensor_slices((train_x, train_y)).batch(32, drop_remainder=True)
+
+    # Optimizer for training
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+
+    # Store the initial parameters
+    prev_params = get_params(incremental_model)
+
+    # Calculate steps per epoch (number of batches)
+    steps_per_epoch = len(train_x) // 32  # Ensure the steps match the dataset size
+
+    for epoch in range(epochs):
+        batch_count = 0
+        try:
+            for data, target in dataset_current_task:
+                # Ensure data has a batch dimension if it's missing
+                if len(data.shape) == 2:  # if shape is (2, 12), expand to (1, 2, 12)
+                    data = tf.expand_dims(data, axis=0)
+
+                # Gradient calculation
+                with tf.GradientTape() as tape:
+                    output = incremental_model(data)
+                    loss = tf.keras.losses.mean_squared_error(target, output)
+                    fisher = compute_fisher(incremental_model, dataset_current_task)
+                    ewc_loss = loss + ewc_penalty(get_params(incremental_model), prev_params, fisher, fisher_multiplier)
+
+                grads = tape.gradient(ewc_loss, incremental_model.trainable_variables)
+                optimizer.apply_gradients(zip(grads, incremental_model.trainable_variables))
+
+                batch_count += 1
+                if batch_count >= steps_per_epoch:
+                    break  # Stop after processing the expected number of batches
+
+        except tf.errors.OutOfRangeError:
+            print(f"End of dataset reached for epoch {epoch + 1}")
+
+        # Update the previous parameters for the next iteration
+        prev_params = update_params(incremental_model, prev_params)
+
+    # Save the model and weights after fine-tuning
+    #incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.h5")
+    incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5")
+
+    incremental_model.save(SAVED_MODELS_PATH + "/" + f"model__{target_resource}.keras")
+    weights_list = [arr.tolist() for arr in incremental_model.get_weights()]
+
+    # Save the model weights to a JSON file for federated learning
+    json_filepath = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
+    save_weights_to_json(weights_list, json_filepath)
+
+    logging.info(f"fine-tuned model: fine_tuned_model model_{target_resource}.keras saved")
+    logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.h5 saved")
+    logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.json saved")
+
+    # Perform validation and predictions
+    validation_data = (validation_x, validation_y)
+    predictions = incremental_model.predict(validation_data[0])
+
+    # Calculate performance metrics
+    mse = calculate_mse(predictions, validation_data[1])
+    rmse = calculate_rmse(mse)
+    r2_score = calculate_r2_score(validation_data[1], predictions)
+
+    # Log and save the metrics
+    append_to_csv(EVALUATION_PATH, target_resource, mse, rmse, r2_score)
+    print("metrics exposed, incremental model and fine-tuned weights saved")
+
+    return iterator, target_resource, predictions
+
+
+def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
+    file_path = EVALUATION_PATH+"/"+f"metrics_{target}.csv"
+    with open(file_path, 'a', newline='') as csvfile:
+        fieldnames = ['MSE', 'RMSE', 'R2']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # If the file is empty, write the header
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        # Append the metrics
+        writer.writerow({'MSE': mse, 'RMSE': rmse, 'R2': r2})
+
+def save_weights_to_json(weights_list:list, json_file_path: str):
+    """
+    Save the weights of a Keras model to a JSON file.
+
+    Parameters:
+    - model: A Keras model.
+    - json_file_path: The file path to save the JSON file.
+    """
+    # Get the weights from the model
+    #weights_list = [arr.tolist() for arr in model.get_weights()]
+
+    # Convert to JSON string
+    weights_json = json.dumps(weights_list)
+
+def file_contains_word(path_, word):
+    """
+    Returns:
+    - bool: True/False if the file's name contains the word
+    """
+    for element in os.listdir(path_):
+        file_name = os.path.basename(path_+element)  # Extract the file name from the file path
+
+    return word in file_name
+
+def delete_file(file_name):
+    try:
+        # Check if the file exists
+        if os.path.exists(file_name):
+            # Delete the file
+            os.remove(file_name)
+            print(f"The file '{file_name}' has been successfully deleted.")
+        else:
+            print(f"The file '{file_name}' does not exist.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def update_model_with_federated_weights(loaded_model, target_resource):
+    ### this is important code
+    # Load weights from JSON file
+    with open(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", 'r') as json_file:
+        weights_data = json.load(json_file)
+    # Iterate through layers in the model
+    for layer in loaded_model.layers:
+        # Check if the layer has weights in your JSON
+        if layer.name in weights_data:
+            # Load weights from JSON and set them to the layer
+            layer.set_weights([np.array(weights_data[layer.name][param]) for param in layer.trainable_weights])
+    
+    delete_file(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json")
+    return loaded_model
 
 #custom made function to apply k-nn in missing-value ts columns
 def k_nearest_neighbors(df:pd.DataFrame, col_):
