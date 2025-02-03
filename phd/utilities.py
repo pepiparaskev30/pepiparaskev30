@@ -225,8 +225,6 @@ def get_network_receive_rate(node_ip):
         print(f"Failed to query Prometheus: {response.status_code}", flush=True)
         return 0
 
-
-
 def get_network_transmit_rate(node_ip):
     # Define the Prometheus URL and the query to get network transmit rate on eth0
     query = f'rate(node_network_transmit_packets_total{{instance="{node_ip}:9100",device="eth0"}}[1m])'
@@ -279,6 +277,7 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     memory_value = get_memory_usage(node_ip)
     netw_receive_value = get_network_receive_rate(node_ip)
     netw_transmit_value = get_network_transmit_rate(node_ip)
+    load_value = get_node_load(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -296,7 +295,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
             "cpu": cpu_value,
             "mem": memory_value, 
             "netw_receive": netw_receive_value,
-            "netwk_transmit": netw_transmit_value
+            "netwk_transmit": netw_transmit_value,
+            "load": load_value
         })
 
     # Transform data into the specified format
@@ -306,9 +306,9 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "mem": [row["mem"] for row in rows], 
         "netw_receive": [row["netw_receive"] for row in rows], 
         "netwk_transmit":[row["netwk_transmit"] for row in rows],  
+        "load_value": [row["load"] for row in rows],  
 
     }
-
     return data
 
 
