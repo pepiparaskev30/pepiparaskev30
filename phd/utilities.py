@@ -278,9 +278,6 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(prometheus_url, cpu_query)
     memory_value = get_memory_usage(node_ip)
-    network_receive_rate = get_network_receive_rate(node_ip)
-    network_transmit_rate = get_network_transmit_rate(node_ip)
-    load_value = get_node_load(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -296,20 +293,15 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
-            "mem": memory_value, 
-            "network_receive_rate": network_receive_rate, 
-            "network_transmit_rate": network_transmit_rate,
-            "load": load_value
+            "mem": memory_value
+
         })
 
     # Transform data into the specified format
     data = {
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
-        "mem": [row["mem"] for row in rows],
-        "network_receive_rate": [row["network_receive_rate"] for row in rows], 
-        "network_transmit_rate": [row["network_transmit_rate"] for row in rows], 
-        "load": [row["load"] for row in rows]
+        "mem": [row["mem"] for row in rows]
     }
 
     return data
