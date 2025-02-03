@@ -247,16 +247,33 @@ def get_network_transmit_rate(node_ip):
         print(f"Failed to query Prometheus: {response.status_code}", flush=True)
         return 0
 
-def get_node_load(node_ip):
+def get_node_load_average(node_ip):
+
+    # Construct the Prometheus query for node_load1
     query = f'node_load1{{instance="{node_ip}:9100"}}'
-    response = requests.get(PROMETHEUS_URL, params={'query': query})
     
+    # URL for Prometheus API query
+    url = f'{PROMETHEUS_URL}/api/v1/query'
+    
+    # Send GET request to Prometheus API
+    response = requests.get(url, params={'query': query})
+    
+    # Check if the request was successful
     if response.status_code == 200:
-        result = response.json()
-        if result['status'] == 'success':
-            value = result['data']['result'][0]['value'][1]  # The load value is in the second element of the 'value' array
-            return float(value)
-    return 0
+        data = response.json()
+        
+        # Check if the response contains data
+        if data["status"] == "success" and data["data"]["result"]:
+            # Extract the value from the result
+            load_average = float(data["data"]["result"][0]["value"][1])  # The second value is the load average
+            return load_average
+        else:
+            print(f"No data returned for node {node_ip}.")
+            return 0
+    else:
+        print(f"Failed to fetch data from Prometheus. HTTP Status Code: {response.status_code}")
+        return 0
+
 
 # Function to gather various metrics for 30 seconds
 def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
@@ -277,6 +294,7 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     memory_value = get_memory_usage(node_ip)
     netw_receive_value = get_network_receive_rate(node_ip)
     netw_transmit_value = get_network_transmit_rate(node_ip)
+    load_value = get_node_load_average(node_ip)
 
 
     # Collect current timestamp
@@ -294,8 +312,9 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
             "timestamp": current_time,
             "cpu": cpu_value,
             "mem": memory_value, 
-            "netw_receive": netw_receive_value,
-            "netwk_transmit": netw_transmit_value
+            "network_receive": netw_receive_value,
+            "network_transmit": netw_transmit_value, 
+            "load": load_value
 
         })
 
@@ -304,9 +323,9 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
         "mem": [row["mem"] for row in rows], 
-        "netw_receive": [row["netw_receive"] for row in rows], 
-        "netwk_transmit":[row["netwk_transmit"] for row in rows]
-
+        "network_receive": [row["netw_receive"] for row in rows], 
+        "network_transmit":[row["netwk_transmit"] for row in rows],
+        "load": [row["load"] for row in rows],
     }
     return data
 
