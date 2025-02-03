@@ -278,6 +278,7 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     cpu_results = query_metric(prometheus_url, cpu_query)
     memory_value = get_memory_usage(node_ip)
     netw_receive_value = get_network_receive_rate(node_ip)
+    netw_transmit_value = get_network_transmit_rate(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -294,8 +295,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
             "timestamp": current_time,
             "cpu": cpu_value,
             "mem": memory_value, 
-            "netw_receive": netw_receive_value
-
+            "netw_receive": netw_receive_value,
+            "netwk_transmit": netw_transmit_value
         })
 
     # Transform data into the specified format
@@ -304,6 +305,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "cpu": [row["cpu"] for row in rows],
         "mem": [row["mem"] for row in rows], 
         "netw_receive": [row["netw_receive"] for row in rows], 
+        "netwk_transmit":[row["netwk_transmit"] for row in rows],  
+
     }
 
     return data
