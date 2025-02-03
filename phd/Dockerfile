@@ -37,7 +37,7 @@ COPY test.py /app/
 COPY LSTM_attention_model_training.py /app/
 COPY training_materials.py /app/
 COPY elasticweightconsolidation.py /app/
-COPY evaluation_matrics.py /app/
+COPY evaluation_metrics.py /app/
 
 
 WORKDIR /app
