@@ -107,6 +107,7 @@ class Gatherer:
 
         Gatherer.ready_flag = False
         print(data_list, flush=True)
+        time.sleep(10)
         #preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
