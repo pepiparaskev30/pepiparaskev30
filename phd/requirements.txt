@@ -14,8 +14,8 @@ scipy==1.10.1
 seaborn==0.13.0
 statsmodels==0.14.0
 sympy==1.12
-tensorboard==2.13.1
 tensorflow==2.13.1
+tensorboard==2.12.3  # or the latest version compatible with your environment
 thread
 torch==2.1.1
 typing-extensions==4.5.0
