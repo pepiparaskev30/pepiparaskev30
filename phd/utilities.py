@@ -177,6 +177,31 @@ def query_metric(prometheus_url, promql_query):
         print(f"Request failed: {e}", flush=True)
     return []
 
+
+def get_memory_usage(node_ip):
+    query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
+    
+    # Send the request to Prometheus
+    response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={'query': query})
+    
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+        
+        # Extract the result
+        result = data['data']['result']
+        
+        # Check if result is available
+        if result:
+            value = result[0]['value'][1]  # The second element is the actual value
+            return value
+        else:
+            print(f"No result found for node {node_ip}")
+            return 0
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return 0
+
 # Function to gather various metrics for 30 seconds
 def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Resolve node IP from node name (assuming a function to resolve node IP)
@@ -187,37 +212,13 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
 
     # Define the queries with the node's IP
     cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
-    memory_query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
-    
-    # Network Bandwidth Queries (with 1-second interval)
-    network_receive_query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
-    network_transmit_query = f'rate(node_network_transmit_bytes_total{{instance="{node_ip}:9100", device!="lo"}}[1m])'
 
-    # Disk I/O Queries (with 1-second interval)
-    disk_read_query = f'rate(node_disk_read_bytes_total{{instance="{node_ip}:9100"}}[1m])'
-    disk_write_query = f'rate(node_disk_write_bytes_total{{instance="{node_ip}:9100"}}[1m])'
-
-    # Disk Usage Query (for ext4 file systems)
-    disk_usage_query = f'100 * (node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}} - node_filesystem_free_bytes{{instance="{node_ip}:9100",fstype="ext4"}}) / node_filesystem_size_bytes{{instance="{node_ip}:9100",fstype="ext4"}}'
-
-    # Load Average Query
-    load_query = f'node_load1{{instance="{node_ip}:9100"}}'
-
-    # Uptime Query
-    uptime_query = f'node_time_seconds{{instance="{node_ip}:9100"}}'
 
     rows = []
 
     # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(prometheus_url, cpu_query)
-    memory_results = query_metric(prometheus_url, memory_query)
-    network_receive_results = query_metric(prometheus_url, network_receive_query)
-    network_transmit_results = query_metric(prometheus_url, network_transmit_query)
-    disk_read_results = query_metric(prometheus_url, disk_read_query)
-    disk_write_results = query_metric(prometheus_url, disk_write_query)
-    disk_usage_results = query_metric(prometheus_url, disk_usage_query)
-    load_results = query_metric(prometheus_url, load_query)
-    uptime_results = query_metric(prometheus_url, uptime_query)
+    memory_value = get_memory_usage(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -229,36 +230,11 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         instance = cpu_result['metric'].get('instance', 'unknown')
         cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
 
-        # Memory
-        memory_value = next((float(mem_result['value'][1]) for mem_result in memory_results if mem_result['metric'].get('instance') == instance), None)
-
-        # Network
-        network_receive_value = next((float(net_recv_result['value'][1]) for net_recv_result in network_receive_results if net_recv_result['metric'].get('instance') == instance), None)
-        network_transmit_value = next((float(net_transmit_result['value'][1]) for net_transmit_result in network_transmit_results if net_transmit_result['metric'].get('instance') == instance), None)
-
-        # Disk
-        disk_read_value = next((float(disk_read_result['value'][1]) for disk_read_result in disk_read_results if disk_read_result['metric'].get('instance') == instance), None)
-        disk_write_value = next((float(disk_write_result['value'][1]) for disk_write_result in disk_write_results if disk_write_result['metric'].get('instance') == instance), None)
-        disk_usage_value = next((float(disk_usage_result['value'][1]) for disk_usage_result in disk_usage_results if disk_usage_result['metric'].get('instance') == instance), None)
-
-        # Load
-        load_value = next((float(load_result['value'][1]) for load_result in load_results if load_result['metric'].get('instance') == instance), None)
-
-        # Uptime
-        uptime_value = next((float(uptime_result['value'][1]) for uptime_result in uptime_results if uptime_result['metric'].get('instance') == instance), None)
-
         # Add the collected data as a new row
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
-            "mem": memory_value,
-            "network_receive": network_receive_value,
-            "network_transmit": network_transmit_value,
-            "disk_read": disk_read_value,
-            "disk_write": disk_write_value if disk_write_value is not None else 0,
-            "disk_usage": disk_usage_value,
-            "load": load_value,
-            "uptime": uptime_value
+            "mem": memory_value
         })
 
     # Transform data into the specified format
@@ -266,13 +242,6 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
         "mem": [row["mem"] for row in rows],
-        "network_receive": [row["network_receive"] for row in rows],
-        "network_transmit": [row["network_transmit"] for row in rows],
-        "disk_read": [row["disk_read"] for row in rows],
-        "disk_write": [row["disk_write"] for row in rows],
-        "disk_usage": [row["disk_usage"] for row in rows],
-        "load": [row["load"] for row in rows],
-        "uptime": [row["uptime"] for row in rows]
     }
 
     return data
