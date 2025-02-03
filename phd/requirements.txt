@@ -13,9 +13,9 @@ scipy==1.10.1
 seaborn==0.13.0
 statsmodels==0.14.0
 sympy==1.12
-tensorflow-cpu==2.13.1  # Use CPU-only TensorFlow
+tensorflow-cpu==2.13.1  # CPU-only version of TensorFlow
+torch==2.1.1  # CPU-only version of PyTorch (without +cpu suffix)
 tensorboard==2.13.0
-torch==2.1.1+cpu  # Use CPU-only PyTorch 3
 urllib3==2.0.5
 uvicorn==0.23.2
-werkzeug==3.0.0 
+werkzeug==3.0.0
