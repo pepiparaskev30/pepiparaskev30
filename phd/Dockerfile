@@ -26,7 +26,7 @@ COPY --from=build /usr/local /usr/local
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Create directories for saving files and logs
 RUN mkdir -p /app/saved_models \
@@ -47,6 +47,9 @@ RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_g
 
 # Copy Python scripts and necessary files into the container
 COPY . /app/
+
+
+
 
 # Set the entry point to the shell script
 CMD ["python", "test.py"]
