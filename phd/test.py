@@ -5,7 +5,7 @@ from multiprocessing import Process, Queue, Event
 
 NODE_NAME = os.getenv("NODE_NAME")
 # Get the scrape interval from the environment variables
-SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 20)) # In Seconds
+SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 1)) # In Seconds
 
 
 # Main function to start the processes
