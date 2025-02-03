@@ -31,6 +31,7 @@ COPY main.py /app/
 COPY data_generation.py /app/
 COPY utilities.py /app/
 COPY test.py /app/
+COPY LSTM_attention_model_training.py /app/
 
 WORKDIR /app
 # Set the entry point to the shell script

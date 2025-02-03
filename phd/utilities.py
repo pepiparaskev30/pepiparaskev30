@@ -61,12 +61,22 @@ import threading
 from queue import Queue
 import urllib.parse
 import requests
+import logging
+import tensorflow as tf
 from sklearn.impute import SimpleImputer
+from LSTM_attention_model_training import DeepNeuralNetwork_Controller
 
 
 ############  START logging properties #################
 #ignore information messages from terminal
 warnings.filterwarnings("ignore")
+# Set TensorFlow log level to suppress info messages
+tf.get_logger().setLevel('ERROR')
+# Configure the logger to filter out the specific message
+logger = logging.getLogger('tensorflow')
+logger.setLevel(logging.ERROR)
+# Suppress the specific message
+logger.propagate = False
 ############ END logging properties #################
 
 #module classes that helps in the pre-processing
@@ -77,10 +87,21 @@ scaler = StandardScaler()
 global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "load"]
 
+################ USEFUL CONSTANT VARIABLES #################
+global sequence_length
+targets = ["cpu", "mem"]
+num_epochs = 20
+sequence_length = 2
+current_datetime = datetime.now()
+early_stopping = {"best_val_loss": float('inf'), "patience" : 5, "no_improvement_count": 0}
+iterator = 0
+epochs = 10
+fisher_multiplier = 1000
 # useful ENV_VARIABLES
 
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
 PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+SAVED_MODELS_PATH = "./saved_models"
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -395,6 +416,24 @@ def csv_to_dict(path_to_csv_file):
 
     return data   
 
+def init_training_based_on_resource(init_training_, target_resource, early_stopping):
+    print(f"[INFO]: Initial Training model for {target_resource}")
+    time.sleep(2)
+    logging.info(f"Start  the pre-training phase for target {target_resource}")
+    training_df = init_training_.df_reformulation(target_metric=target_resource)
+    train_x, train_y, validation_x, validation_y = init_training_.train_test_split_(training_df, sequence_length=sequence_length)
+    logging.info(f"Start preprocessing training for target {target_resource}")
+    model = init_training_.build_model()
+    train_model(target_resource, model,train_x,train_y,validation_x, validation_y, num_epochs,early_stopping )
+    path_to_model_file = SAVED_MODELS_PATH+"/"+f"model_{target_resource}.keras"
+    model.save(path_to_model_file)
+    print("saved")
+
+def train_model(target_resource,simple_model, train_x, train_y,validation_x,validation_y, num_epochs,early_stopping):
+    mse_list_init, rmse_list_init=[],[]
+    for epoch in range(num_epochs):
+        logging.info(f"Model started training, is on {epoch+1} epoch")
+
 def clear_csv_content(csv_file):
     # Read the CSV file to get the header
     with open(csv_file, mode='r', newline='') as file:
@@ -414,8 +453,15 @@ def preprocessing(data_flush_list,path_to_data_file):
     if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
-        print(causalilty_ram, flush=True)
-        print(causality_cpu, flush=True)
+        features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
+        features_cpu =['mem']
+        features_ram = ['cpu']
+        init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
+        for target_resource in targets:
+            init_training_based_on_resource(init_training_, target_resource, early_stopping)
+            print("YOU DID IT!!!!!")
+            time.sleep(100)
+
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
         print(df, flush=True)
@@ -423,7 +469,19 @@ def preprocessing(data_flush_list,path_to_data_file):
     else:
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
 
-
+def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame):
+    if len(causality_cpu) == 0:
+        cpu_to_remove = ["cpu", "timestamp"]
+        features_cpu = [item for item in list(updated_df.columns) if item not in cpu_to_remove]
+    else:
+        features_cpu = causality_cpu
+    if len(causality_ram) == 0:
+        ram_to_remove = ["mem", "timestamp"]
+        features_ram = [item for item in list(updated_df.columns) if item not in ram_to_remove]
+    else:
+        features_ram = causality_ram
+    
+    return features_cpu, features_ram
 
 #custom made function to apply k-nn in missing-value ts columns
 def k_nearest_neighbors(df:pd.DataFrame, col_):
@@ -617,4 +675,7 @@ def preprocess_time_series_data(df:pd.DataFrame):
 
     # Print the JSON data
     return pipeline.df,causality_cpu, causality_ram
+
+
+
     
