@@ -323,8 +323,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
         "mem": [row["mem"] for row in rows], 
-        "network_receive": [row["netw_receive"] for row in rows], 
-        "network_transmit":[row["netwk_transmit"] for row in rows],
+        "network_receive": [row["network_receive"] for row in rows], 
+        "network_transmit":[row["network_transmit"] for row in rows],
         "load": [row["load"] for row in rows],
     }
     return data
