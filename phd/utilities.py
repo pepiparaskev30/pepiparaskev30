@@ -226,7 +226,6 @@ def get_network_receive_rate(node_ip):
         return 0
 
 
-import requests
 
 def get_network_transmit_rate(node_ip):
     # Define the Prometheus URL and the query to get network transmit rate on eth0
@@ -278,6 +277,7 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(prometheus_url, cpu_query)
     memory_value = get_memory_usage(node_ip)
+    netw_receive_value = get_network_receive_rate(node_ip)
 
     # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -293,7 +293,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
         rows.append({
             "timestamp": current_time,
             "cpu": cpu_value,
-            "mem": memory_value
+            "mem": memory_value, 
+            "netw_receive": netw_receive_value
 
         })
 
@@ -301,7 +302,8 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     data = {
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
-        "mem": [row["mem"] for row in rows]
+        "mem": [row["mem"] for row in rows], 
+        "netw_receive": [row["netw_receive"] for row in rows], 
     }
 
     return data
