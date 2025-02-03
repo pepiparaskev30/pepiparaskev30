@@ -163,9 +163,6 @@ def query_metric(prometheus_url, promql_query):
     # Construct the full Prometheus API URL
     url = f"{prometheus_url}/api/v1/query?query={encoded_query}"
     
-    # Debugging: Log the query URL for troubleshooting
-    print(f"Querying Prometheus: {url}")
-
     try:
         response = requests.get(url, timeout=10)
         if response.status_code == 200:
@@ -173,11 +170,11 @@ def query_metric(prometheus_url, promql_query):
             if data.get('status') == 'success':
                 return data.get('data', {}).get('result', [])
             else:
-                print(f"Query failed: {data.get('error')}")
+                print(f"Query failed: {data.get('error')}", flush=True)
         else:
-            print(f"Error: HTTP {response.status_code}, {response.reason}")
+            print(f"Error: HTTP {response.status_code}, {response.reason}", flush=True)
     except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
+        print(f"Request failed: {e}", flush=True)
     return []
 
 # Function to gather various metrics for 30 seconds
