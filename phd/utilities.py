@@ -75,7 +75,7 @@ scaler = StandardScaler()
 
 # useful variables
 global header
-header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit", "disk_read", "disk_write", "disk_usage", "load", "uptime"]
+header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "load"]
 
 # useful ENV_VARIABLES
 
@@ -89,7 +89,7 @@ class Gatherer:
     prometheus_data_queue = Queue()
 
     # Amount of time to wait before starting a new thread
-    wait_time = int(os.getenv('WAIT_TIME', '10'))
+    wait_time = int(os.getenv('WAIT_TIME', '15'))
 
     # Start the threads
     def start_thread():
@@ -106,9 +106,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        print(data_list, flush=True)
-        time.sleep(10)
-        #preprocessing(data_list, DATA_GENERATION_PATH)
+        preprocessing(data_list, DATA_GENERATION_PATH)
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -367,11 +365,7 @@ def csv_to_dict(path_to_csv_file):
         "mem": [],
         "network_receive":[],
         "network_transmit": [],
-        "disk_read": [],
-        "disk_write": [],
-        "disk_usage": [],
-        "load": [],
-        "uptime": []
+        "load": []
     }
 
     # Read the CSV and populate the dictionary
@@ -395,20 +389,8 @@ def csv_to_dict(path_to_csv_file):
             # Check and convert the "network_transmit" value
             data["network_transmit"].append(float(row["network_transmit"]) if row["network_transmit"] else 0.0)
             
-            # Check and convert the "disk_read" value
-            data["disk_read"].append(float(row["disk_read"]) if row["disk_read"] else 0.0)
-            
-            # Check and convert the "disk_write" value
-            data["disk_write"].append(float(row["disk_write"]) if row["disk_write"] else 0.0)
-            
-            # Check and convert the "disk_usage" value
-            data["disk_usage"].append(float(row["disk_usage"]) if row["disk_usage"] else 0.0)
-            
             # Check and convert the "load" value
             data["load"].append(float(row["load"]) if row["load"] else 0.0)
-            
-            # Check and convert the "uptime" value
-            data["uptime"].append(float(row["uptime"]) if row["uptime"] else 0.0)
 
 
     return data   
@@ -425,7 +407,6 @@ def clear_csv_content(csv_file):
         writer.writerow(header)  # Write the header back to the file
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
-
 
 def preprocessing(data_flush_list,path_to_data_file):
     data_formulation(data_flush_list,path_to_data_file)
