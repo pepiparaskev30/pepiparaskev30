@@ -1,26 +1,26 @@
-# Use the official Python 3.11 image as the base image
+# Use the official Python 3.11 slim image as the base image
 FROM python:3.11-slim
 
-# Install wget and curl
+# Install wget and curl in a single RUN command to reduce layers
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories for saving files and logs
+# Create directories for saving files and logs in a single RUN command
 RUN mkdir -p /app/saved_models \
     /app/weights_path \
     /app/log_path_file \
     /app/evaluation_results \
     /app/federated_send_results \
     /app/data_generation_path \
-    /app/json_weights \ 
-    /app/federated_received_results \
-    /app/federated_send_results 
+    /app/json_weights \
+    /app/federated_received_results
 
 # Set the working directory in the container
 WORKDIR /app
-# Create an empty CSV file and add headers
+
+# Create an empty CSV file and add headers in a single RUN command
 RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_generation_path/data.csv
 
 # Copy requirements.txt into the container
@@ -29,17 +29,10 @@ COPY requirements.txt /app/
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all Python scripts and other necessary files into the container
-COPY main.py /app/ \
-    data_generation.py /app/ \ 
-    utilities.py /app/ \ 
-    test.py /app/ \ 
-    LSTM_attention_model_training.py /app/ \
-    training_materials.py /app/ \ 
-    elasticweightconsolidation.py /app/ \ 
-    evaluation_metrics.py /app/
+# Copy all Python scripts and other necessary files into the container in a single COPY command
+COPY main.py data_generation.py utilities.py test.py \
+    LSTM_attention_model_training.py training_materials.py \
+    elasticweightconsolidation.py evaluation_metrics.py /app/
 
-
-WORKDIR /app
 # Set the entry point to the shell script
 CMD ["python", "test.py"]
