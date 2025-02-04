@@ -23,7 +23,8 @@ spec:
                       - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v182  # Replace this with your correct image
+          image: pepi1989/client_pod:v183  # Replace this with your correct image
+          imagePullPolicy: Always
           env:
             - name: POD_NAME
               valueFrom:

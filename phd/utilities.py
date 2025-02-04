@@ -66,7 +66,6 @@ import tensorflow as tf
 from sklearn.impute import SimpleImputer
 from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
-from training_materials import load_keras_model
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
 
 
@@ -422,6 +421,26 @@ def csv_to_dict(path_to_csv_file):
 
 
     return data   
+
+def load_keras_model(model_path, custom_objects=None):
+    """
+    Load a Keras model from a .keras file.
+
+    Parameters:
+    - model_path (str): Path to the .keras model file.
+    - custom_objects (dict): Optional dictionary of custom objects required for deserialization.
+
+    Returns:
+    - model (tf.keras.Model): Loaded Keras model.
+    """
+    try:
+        model = tf.keras.models.load_model(model_path, custom_objects=custom_objects)
+        print(f"Model loaded successfully from {model_path}.")
+        return model
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None
+
 
 def init_training_based_on_resource(init_training_, target_resource, early_stopping):
     print(f"[INFO]: Initial Training model for {target_resource}")
