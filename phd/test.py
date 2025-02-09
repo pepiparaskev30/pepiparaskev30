@@ -1,5 +1,6 @@
 import time
 import json, os
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from utilities import gather_metrics_for_30_seconds, Gatherer
 from multiprocessing import Process, Queue, Event
 

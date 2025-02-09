@@ -47,6 +47,8 @@ Configuration:
 from datetime import datetime
 import pandas as pd
 import time,os, json
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 import numpy as np
 import csv
 from sklearn.preprocessing import LabelEncoder
@@ -92,12 +94,12 @@ header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "lo
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
 targets = ["cpu", "mem"]
-num_epochs = 20
+num_epochs = 3
 sequence_length = 2
 current_datetime = datetime.now()
 early_stopping = {"best_val_loss": float('inf'), "patience" : 5, "no_improvement_count": 0}
 iterator = 0
-epochs = 10
+epochs = 3
 fisher_multiplier = 1000
 # useful ENV_VARIABLES
 NODE_NAME = os.getenv("NODE_NAME")
