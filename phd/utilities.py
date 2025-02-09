@@ -483,7 +483,7 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
             break
 
     predictions = simple_model.predict(validation_x)
-    print(predictions, flush=True)
+    #print(predictions, flush=True)
     mse = calculate_mse(predictions, validation_y)
     rmse = calculate_rmse(mse)
     r2_score = calculate_r2_score(validation_y, predictions)
@@ -529,6 +529,7 @@ def preprocessing(data_flush_list,path_to_data_file):
                     iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
                 print("DONEEEEE SO FAR!")
                 time.sleep(1000)
+            iterator+=1
 
 
         clear_csv_content(path_to_data_file)
