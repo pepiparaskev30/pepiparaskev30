@@ -521,7 +521,8 @@ def preprocessing(data_flush_list,path_to_data_file):
                 for target_resource in targets:
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
                     print("Initial training completed")
-                    time.sleep(2)
+                    iterator+=1
+
             elif iterator>=1:
                 print("Incremental procedure started", flush=True)
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
@@ -530,7 +531,7 @@ def preprocessing(data_flush_list,path_to_data_file):
                     iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
                 print("DONEEEEE SO FAR!")
                 time.sleep(1000)
-            iterator+=1
+                iterator+=1
 
 
         clear_csv_content(path_to_data_file)
