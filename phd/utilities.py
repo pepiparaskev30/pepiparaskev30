@@ -51,6 +51,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import numpy as np
 import csv
+from collections import Counter
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.preprocessing import StandardScaler
@@ -94,6 +95,8 @@ header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "lo
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
 global iterator
+global trained_model_predictions
+trained_model_predictions=[]
 targets = ["cpu", "mem"]
 num_epochs = 3
 sequence_length = 2
@@ -111,6 +114,8 @@ WEIGHTS_PATH = "./json_weights"
 FEDERATED_WEIGHTS_PATH_RECEIVE = "./federated_received_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
+FEDERATION_URL_SEND = "./"
+FEDERATION_URL_RECEIVE = "./"
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -493,6 +498,134 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
 
     return simple_model
 
+def federated_learning_send(target_resource, max_retries=100):
+    file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
+
+    with open(file_to_be_sent, 'rb') as json_file:
+        files = {
+            'file': (f'{target_resource}_weights_{NODE_NAME}.json', json_file),
+            'target_name': (None, target_resource),
+            'node_name': (None, NODE_NAME)
+        }
+
+        print("to be sent to the fd master node...")
+        response = requests.post(FEDERATION_URL_SEND, files=files)
+
+        retry_count = 0
+        while response.status_code != 200 and retry_count < max_retries:
+            time.sleep(1)
+            print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n - MESSAGE: Request is not completed. Retrying...")
+            response = requests.post(FEDERATION_URL_SEND, files=files)
+            retry_count += 1
+
+        if response.status_code != 200:
+            print("[ERROR]: Max retries reached. Request not completed.")
+
+def federated_receive(url, target_resource, max_retries=100, retry_delay=2):
+    payload = {"file_type": target_resource}
+    print(payload)
+    time.sleep(10)
+    retries = 0
+    while retries < max_retries:
+        response = requests.post(url, json= payload)
+
+        if response.status_code == 200:
+            try:
+                # Try to parse the response as JSON
+                
+                json_body = response.json()
+                if json_body == None:
+                    print("[INFO]: weights not ready yet")
+                else:
+                    print("[INFO]: weights have been received")
+                #print("Received JSON body:", json_body)
+                return json_body  # Return the JSON body
+            except json.JSONDecodeError:
+                # Handle the case where the response is not valid JSON
+                print("Received non-JSON response. Retrying...")
+        else:
+            # Handle non-200 status codes
+            print(f"Request failed with status code {response.status_code}. Retrying...")
+
+        # Increment the retry count
+        retries += 1
+
+        # Introduce a delay before making the next request
+        time.sleep(retry_delay)
+
+    print(f"Maximum retries ({max_retries}) reached. No valid JSON response received.")
+    return None
+
+def write_json_body(file_path, json_data):
+    # Write the JSON object to the file
+    with open(file_path, 'w') as json_file:
+        json.dump(json_data, json_file, indent=4)
+
+    print(f"The JSON data has been successfully written to {file_path}.")
+
+def calculate_rate_of_change(lst):
+    rates = [lst[i] - lst[i - 1] for i in range(1, len(lst))]
+    return rates
+
+def analyze_rate_of_change(rates):
+    positive_rates = sum(rate > 0 for rate in rates)
+    negative_rates = sum(rate < 0 for rate in rates)
+
+    if positive_rates > negative_rates:
+        return 1
+    elif positive_rates < negative_rates:
+        return -1
+    else:
+        return 0
+
+def trend_of_values(lst):
+    increasing = all(lst[i] < lst[i + 1] for i in range(len(lst) - 1))
+    decreasing = all(lst[i] > lst[i + 1] for i in range(len(lst) - 1))
+
+    if increasing:
+        return 1
+    elif decreasing:
+        return -1
+    else:
+        return 0
+
+def calculate_convergence(path_, target):
+    data_list, mse_list, rmse_list, r2_list = [],[],[],[]
+    for file_ in os.listdir(path_):
+        if file_.endswith(f"{target}.csv"):
+            with open(path_+"/"+file_, "r") as csv_file:
+                csv_reader = csv.DictReader(csv_file)
+                for row in csv_reader:
+                    data_list.append(row)
+                for element in data_list:
+                    for k,v in element.items():
+                        if k == "MSE":
+                            mse_list.append(float(v))
+                        elif k =="RMSE": 
+                            rmse_list.append(float(v))
+                        else:
+                            r2_list.append(float(v))
+
+                trend_mse, trend_rmse, trend_r2 = trend_of_values(mse_list), trend_of_values(rmse_list), trend_of_values(r2_list)
+                return trend_mse, trend_rmse, trend_r2
+
+                
+        else:
+            continue
+
+
+def count_frequency(tuple_):
+    # Use Counter to count occurrences of each value
+    value_counts = Counter(tuple_)
+
+    # Find the maximum frequency
+    max_frequency = max(value_counts.values())
+
+    # Find all values with the maximum frequency
+    most_frequent_values = [value for value, frequency in value_counts.items() if frequency == max_frequency]
+
+    return most_frequent_values
+
 def clear_csv_content(csv_file):
     # Read the CSV file to get the header
     with open(csv_file, mode='r', newline='') as file:
@@ -506,13 +639,13 @@ def clear_csv_content(csv_file):
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
-def preprocessing(data_flush_list,path_to_data_file):
+def preprocessing(data_flush_list,path_to_data_file, iterator=0):
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
     if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         for i in range(0,3):
-            if  i == 0:
+            if  iterator == 0:
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
                 features_cpu =['mem']
@@ -522,16 +655,74 @@ def preprocessing(data_flush_list,path_to_data_file):
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
                     print("Initial training completed")
 
-            elif i>=1:
+            elif iterator>=1:
                 print("Incremental procedure started", flush=True)
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
                 for target_resource in targets:
                     iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
-                print("DONEEEEE SO FAR!")
-                time.sleep(1000)
-                
-            i+=1
+                    if i%2==0:
+                        print(f"========== predictions for {target_resource} ==========")
+                        predictions_final_ = predictions_.tolist()
+                        for element in predictions_final_:
+                            trained_model_predictions.append(element[0])
+                        result = analyze_rate_of_change(calculate_rate_of_change(trained_model_predictions))
+                        print(result)
+                        time.sleep(10)
+                        if result in (0,1):
+                            pass
+                        else: 
+                            print("trigger re-adaptation")
+                            time.sleep(1000)
+
+
+
+                        predictions_final_=[]
+
+
+                        time.sleep(10)
+                    metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
+                    most_frequent_value = count_frequency(metrics_convergence)
+                    if len(most_frequent_value) == 1:
+                        if most_frequent_value[0] == 1:
+                            pass
+                        else:
+                            print("Welcome to Federated Learning!!")
+                            time.sleep(1)
+                            federated_learning_send(target_resource)
+                            while True:
+                                federated_weights = federated_receive(FEDERATION_URL_RECEIVE, target_resource=target_resource)
+                                
+                                if federated_weights != None:
+                                    print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have been received")
+                                    time.sleep(2)
+                                    break
+                                else:
+                                    print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have not been received yet")
+                                    time.sleep(2)
+                            write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", federated_weights)     
+
+                            
+                    else:
+                        print("Welcome to \n Federated Learning!!")
+                        time.sleep(1)
+                        federated_learning_send(target_resource) 
+                        federated_receive(FEDERATION_URL_RECEIVE)
+                        while True:
+                            federated_weights = federated_receive(FEDERATION_URL_RECEIVE)
+                            if federated_weights != None:
+                                print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have been received")
+                                time.sleep(2)
+                                break
+                            else:
+                                print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have not been received yet")
+                                time.sleep(2)
+                        
+                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)     
+
+            iterator+=1        
+        i = 0
+        time.sleep(4)
 
 
         clear_csv_content(path_to_data_file)
