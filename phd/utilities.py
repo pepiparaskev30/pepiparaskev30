@@ -512,7 +512,7 @@ def preprocessing(data_flush_list,path_to_data_file):
     if row_count>=30:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         for i in range(0,3):
-            if iterator == 0:
+            if  i == 0:
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
                 features_cpu =['mem']
@@ -521,9 +521,8 @@ def preprocessing(data_flush_list,path_to_data_file):
                 for target_resource in targets:
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
                     print("Initial training completed")
-                    iterator+=1
 
-            elif iterator>=1:
+            elif i>=1:
                 print("Incremental procedure started", flush=True)
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
@@ -531,7 +530,8 @@ def preprocessing(data_flush_list,path_to_data_file):
                     iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
                 print("DONEEEEE SO FAR!")
                 time.sleep(1000)
-                iterator+=1
+                
+            i+=1
 
 
         clear_csv_content(path_to_data_file)
