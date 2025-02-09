@@ -93,6 +93,7 @@ header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "lo
 
 ################ USEFUL CONSTANT VARIABLES #################
 global sequence_length
+global iterator
 targets = ["cpu", "mem"]
 num_epochs = 3
 sequence_length = 2
