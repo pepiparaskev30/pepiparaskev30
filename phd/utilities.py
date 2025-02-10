@@ -640,20 +640,21 @@ def clear_csv_content(csv_file):
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
 def preprocessing(data_flush_list,path_to_data_file, iterator=0):
+    print(data_flush_list, flush=True)
     data_formulation(data_flush_list,path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
-    if row_count>=30:
+    if row_count>=15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         for i in range(0,3):
             if  iterator == 0:
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
-                features_cpu =['mem']
-                features_ram = ['cpu']
+                features_cpu =['mem', "network_receive", "network_transmit", "load"]
+                features_ram = ['cpu',"network_receive", "network_transmit", "load"]
                 init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
                 for target_resource in targets:
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
-                    print("Initial training completed")
+                    print("Initial training completed", flush=True)
 
             elif iterator>=1:
                 print("Incremental procedure started", flush=True)
