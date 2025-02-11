@@ -25,4 +25,4 @@ COPY utilities.py /app
 
 # Set the entry point to the shell script
 # Define the command to run your application
-CMD ["uvicorn", "fed_master:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["uvicorn", "sent_master_FL_weights_api:app", "--host", "0.0.0.0", "--port", "8002"]
