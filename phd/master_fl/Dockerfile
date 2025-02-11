@@ -24,4 +24,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY utilities.py /app
 
 # Set the entry point to the shell script
-CMD ["python", "sent_master_FL_weights_api.py"]
+# Define the command to run your application
+CMD ["uvicorn", "fed_master:app", "--host", "0.0.0.0", "--port", "8002"]
