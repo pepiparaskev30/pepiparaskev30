@@ -12,8 +12,7 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /app/master_received_weights_json \
             /app/node_notebook
 
-# Set the working directory in the container
-WORKDIR /app
+
 
 #copy proper files
 COPY requirements.txt /app/
@@ -23,6 +22,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY utilities.py /app
 
+# Set the working directory in the container
+WORKDIR /app
 # Set the entry point to the shell script
 # Define the command to run your application
 CMD ["python", "sent_master_FL_weights_api.py"]
