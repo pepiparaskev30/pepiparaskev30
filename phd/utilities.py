@@ -500,7 +500,7 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
 
 def federated_learning_send(target_resource, max_retries=100):
     file_to_be_sent = FEDERATED_WEIGHTS_PATH_SEND_CLIENT + "/" + f"{target_resource}_weights_{NODE_NAME}.json"
-
+    create_empty_json_file(file_to_be_sent)
     with open(file_to_be_sent, 'rb') as json_file:
         files = {
             'file': (f'{target_resource}_weights_{NODE_NAME}.json', json_file),
@@ -732,6 +732,31 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
         
     else:
         print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
+
+def create_empty_json_file(filepath):
+    """
+    Creates an empty JSON file at the specified filepath.
+
+    Args:
+        filepath (str): The path to the JSON file to be created.
+    """
+    try:
+        # Check if the file already exists
+        if not os.path.exists(filepath):
+            # Create an empty dictionary
+            empty_data = {}
+
+            # Open the file in write mode ('w')
+            with open(filepath, 'w') as json_file:
+                # Use json.dump() to write the empty dictionary to the file
+                json.dump(empty_data, json_file, indent=4)  # indent for readability
+
+            print(f"Empty JSON file created successfully at: {filepath}")
+        else:
+            print(f"File already exists at: {filepath}")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame):
     if len(causality_cpu) == 0:
