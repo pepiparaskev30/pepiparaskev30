@@ -500,6 +500,11 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
 
 def federated_learning_send(target_resource, max_retries=100):
     file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
+    if not os.path.exists(FEDERATED_WEIGHTS_PATH_SEND_CLIENT):
+        os.makedirs(FEDERATED_WEIGHTS_PATH_SEND_CLIENT)
+        print("Directory no found, created a new ones", flush=True)
+    else:
+        pass
 
     with open(file_to_be_sent, 'rb') as json_file:
         files = {
@@ -688,7 +693,7 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                         if most_frequent_value[0] == 1:
                             pass
                         else:
-                            print("Welcome to Federated Learning!!")
+                            print("Welcome to Federated Learning!!", flush=True)
                             time.sleep(1)
                             federated_learning_send(target_resource)
                             while True:
