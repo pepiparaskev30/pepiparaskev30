@@ -499,12 +499,7 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
     return simple_model
 
 def federated_learning_send(target_resource, max_retries=100):
-    file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
-    if not os.path.exists(FEDERATED_WEIGHTS_PATH_SEND_CLIENT):
-        os.makedirs(FEDERATED_WEIGHTS_PATH_SEND_CLIENT)
-        print("Directory no found, created a new ones", flush=True)
-    else:
-        pass
+    file_to_be_sent = FEDERATED_WEIGHTS_PATH_SEND_CLIENT + "/" + f"{target_resource}_weights_{NODE_NAME}.json"
 
     with open(file_to_be_sent, 'rb') as json_file:
         files = {
