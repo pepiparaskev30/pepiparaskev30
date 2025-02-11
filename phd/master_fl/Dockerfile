@@ -13,6 +13,8 @@ RUN mkdir -p /app/master_received_weights_json \
             /app/node_notebook
 
 
+# Set the working directory in the container
+WORKDIR /app
 
 #copy proper files
 COPY requirements.txt /app/
