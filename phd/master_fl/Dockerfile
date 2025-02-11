@@ -25,4 +25,4 @@ COPY utilities.py /app
 
 # Set the entry point to the shell script
 # Define the command to run your application
-CMD [["python", "sent_master_FL_weights_api.py"]]
+CMD ["python", "sent_master_FL_weights_api.py"]
