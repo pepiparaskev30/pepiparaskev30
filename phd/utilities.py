@@ -652,6 +652,7 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
     if row_count>=15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         for i in range(0,3):
+            print(i, flush=True)
             if  iterator == 0:
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
