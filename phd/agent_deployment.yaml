@@ -23,7 +23,7 @@ spec:
                       - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v193  # Replace this with your correct image
+          image: pepi1989/client_pod:v194  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
@@ -40,3 +40,5 @@ spec:
                   fieldPath: spec.nodeName  # Dynamically gets the node name where the pod is running
             - name: PROMETHEUS_URL
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"  # Prometheus service URL
+            - name: FEDERATION_URL_SEND
+              value: "http://fed-master-service:8002/upload_weights_fdl_master"

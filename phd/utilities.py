@@ -114,7 +114,7 @@ WEIGHTS_PATH = "./json_weights"
 FEDERATED_WEIGHTS_PATH_RECEIVE = "./federated_received_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
-FEDERATION_URL_SEND = "./"
+FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = "./"
 
 class Gatherer:
@@ -498,6 +498,9 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
 
     return simple_model
 
+def get_federation_url():
+    pass
+
 def federated_learning_send(target_resource, max_retries=100):
     file_to_be_sent = FEDERATED_WEIGHTS_PATH_SEND_CLIENT + "/" + f"{target_resource}_weights_{NODE_NAME}.json"
     create_empty_json_file(file_to_be_sent)
@@ -508,7 +511,10 @@ def federated_learning_send(target_resource, max_retries=100):
             'node_name': (None, NODE_NAME)
         }
 
-        print("to be sent to the fd master node...")
+        print("to be sent to the fd master node...", flush=True)
+        print(files, flush=True)
+        print("-----------------------")
+        time.sleep(10)
         response = requests.post(FEDERATION_URL_SEND, files=files)
 
         retry_count = 0
