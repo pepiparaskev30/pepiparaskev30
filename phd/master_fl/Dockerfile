@@ -1,6 +1,5 @@
 # Use the official Python 3.11 slim image as the base image
 FROM python:3.11-slim
-MAINTAINER Pepi Paraskevoulakou
 
 # Install wget and curl in a single RUN command to reduce layers
 RUN apt-get update && apt-get install -y \
