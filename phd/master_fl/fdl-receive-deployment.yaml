@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fed-master-receive
+  labels:
+    app: fed-master-receive
+spec:
+  nodeSelector: 
+    node-role.kubernetes.io/pepi-master: "true"  # Ensure pods are scheduled on the pepi-master node
+  replicas: 1  # Number of replicas for scaling
+  selector:
+    matchLabels:
+      app: fed-master-receive  # This should match the template metadata labels
+  template:
+    metadata:
+      labels:
+        app: fed-master-receive  # This should match the selector labels
+    spec:
+      containers:
+        - name: fed-master
+          image: pepi1989/fdl_master:v3  # Replace with your Docker image name
+          ports:
+            - containerPort: 8002
+          env:
+            - name: MASTER_WEIGHTS_RECEIVE_DIR
+              value: "/weights"  # Absolute path to store weights in the container
+            - name: NODE_NOTBOOK_DIR
+              value: "/notebook"  # Absolute path to store node information
+          volumeMounts:
+            - mountPath: /weights  # Absolute path in the container
+              name: master-weights
+            - mountPath: /notebook  # Absolute path in the container
+              name: node-notebook
+      volumes:
+        - name: master-weights
+          persistentVolumeClaim:
+            claimName: master-weights-pvc  # Make sure this PVC exists
+        - name: node-notebook
+          persistentVolumeClaim:
+            claimName: node-notebook-pvc  # Make sure this PVC exists

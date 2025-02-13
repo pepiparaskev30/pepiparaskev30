@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fed-master-service
+spec:
+  selector:
+    app: fed-master-receive
+  ports:
+    - protocol: TCP
+      port: 8002
+      targetPort: 8002
+  clusterIP: None  # This is for headless service (useful for communication between pods)
