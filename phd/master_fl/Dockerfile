@@ -1,6 +1,6 @@
 # Use the official Python 3.11 slim image as the base image
-# fdl master weights receive
 FROM python:3.11-slim
+MAINTAINER Pepi Paraskevoulakou
 
 # Install wget and curl in a single RUN command to reduce layers
 RUN apt-get update && apt-get install -y \
@@ -12,13 +12,15 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /app/master_received_weights_json \
             /app/node_notebook
 
+# Create an empty nodes_notebook.csv file inside the node_notebook directory
+RUN touch /app/node_notebook/nodes_notebook.csv
 
 # Set the working directory in the container
 WORKDIR /app
 
-#copy proper files
-COPY requirements.txt sent_master_FL_weights_api.py utilities.py /app/  
-    
+# Copy the required files into the container
+COPY requirements.txt sent_master_FL_weights_api.py utilities.py /app/
+
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
