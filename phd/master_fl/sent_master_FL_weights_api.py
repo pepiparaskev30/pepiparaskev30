@@ -23,7 +23,7 @@ training knowledge
 
 
 from utilities import append_to_csv_nodes
-from fastapi import FastAPI, File, Form, HTTPException
+from fastapi import FastAPI, File, Form
 from fastapi.responses import JSONResponse
 from fastapi import UploadFile
 import uvicorn, os, traceback
