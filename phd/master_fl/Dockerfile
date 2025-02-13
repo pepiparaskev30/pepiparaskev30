@@ -17,15 +17,11 @@ RUN mkdir -p /app/master_received_weights_json \
 WORKDIR /app
 
 #copy proper files
-COPY requirements.txt /app/
-
+COPY requirements.txt sent_master_FL_weights_api.py utilities.py /app/  
+    
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY utilities.py /app
-
-# Set the working directory in the container
-WORKDIR /app
 # Set the entry point to the shell script
 # Define the command to run your application
 CMD ["python", "sent_master_FL_weights_api.py"]
