@@ -5,19 +5,19 @@ metadata:
   labels:
     app: fed-master-receive
 spec:
-  nodeSelector: 
-    node-role.kubernetes.io/pepi-master: "true"  # Ensure pods are scheduled on the pepi-master node
   replicas: 1  # Number of replicas for scaling
   selector:
     matchLabels:
-      app: fed-master-receive  # This should match the template metadata labels
+      app: fed-master-receive  # Ensure labels match with the template
   template:
     metadata:
       labels:
-        app: fed-master-receive  # This should match the selector labels
+        app: fed-master-receive  # Ensure labels match with the selector
     spec:
+      nodeSelector:
+        node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
       containers:
-        - name: fed-master
+        - name: fed-master-receive
           image: pepi1989/fdl_master:v3  # Replace with your Docker image name
           ports:
             - containerPort: 8002
