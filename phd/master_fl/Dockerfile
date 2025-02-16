@@ -14,6 +14,9 @@ RUN mkdir -p /app/master_received_weights_json \
 # Create an empty nodes_notebook.csv file inside the node_notebook directory
 RUN touch /app/node_notebook/nodes_notebook.csv
 
+# Ensure that the file has proper permissions for writing (especially if running as non-root user)
+RUN chmod 666 /app/node_notebook/nodes_notebook.csv
+
 # Set the working directory in the container
 WORKDIR /app
 

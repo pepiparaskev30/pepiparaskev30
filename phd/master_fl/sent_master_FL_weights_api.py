@@ -20,19 +20,13 @@ training knowledge
 '''
 
 # Import necessary libraries
-
-
 from utilities import append_to_csv_nodes
 from fastapi import FastAPI, File, Form
 from fastapi.responses import JSONResponse
 from fastapi import UploadFile
 import uvicorn, os, traceback
 
-
-global MASTER_WEIGHTS_RECEIVE_DIR
-global NODE_NOTBOOK_DIR  
-
-# useful env variables
+# Define global variables
 MASTER_WEIGHTS_RECEIVE_DIR = "./master_received_weights_json"
 NODE_NOTBOOK_DIR = "./node_notebook"
 
@@ -46,20 +40,35 @@ async def upload_file(
     node_name: str = Form(...)
 ):
     try:
-        # Handle the uploaded file
+        # Ensure the directory exists before trying to write files
+        if not os.path.exists(MASTER_WEIGHTS_RECEIVE_DIR):
+            os.makedirs(MASTER_WEIGHTS_RECEIVE_DIR)
+        
+        # Handle the uploaded file and write it to the appropriate directory
         contents = await file.read()
-        with open(f"{MASTER_WEIGHTS_RECEIVE_DIR}/weights_{target_name}_{node_name}.json", "wb") as f:
+        file_path = f"{MASTER_WEIGHTS_RECEIVE_DIR}/weights_{target_name}_{node_name}.json"
+        with open(file_path, "wb") as f:
             f.write(contents)
+        
+        print(f"File uploaded and saved to {file_path}")
     except Exception as e:
         print(f"Error processing request: {e}")
         traceback.print_exc()
         raise
     
-    append_to_csv_nodes(os.path.join(NODE_NOTBOOK_DIR, "nodes_notebook.csv"), node_name)
-
+    # Ensure the directory for the notebook exists
+    if not os.path.exists(NODE_NOTBOOK_DIR):
+        os.makedirs(NODE_NOTBOOK_DIR)
+    
+    # Define the file path for the node notebook
+    notebook_file_path = f"{NODE_NOTBOOK_DIR}"+"/"+"nodes_notebook.csv"
+    print(f"Appending node name to {notebook_file_path}", flush=True)
+    
+    # Append the node name to the CSV file
+    append_to_csv_nodes(notebook_file_path, node_name)
 
     return JSONResponse(content={"message": "File and node name uploaded successfully to the master node"}, status_code=200)
 
-
+# Run the application with uvicorn
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8002)
