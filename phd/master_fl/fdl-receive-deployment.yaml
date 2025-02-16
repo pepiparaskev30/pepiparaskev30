@@ -18,18 +18,18 @@ spec:
         node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v8  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v9  # Replace with your Docker image name
           ports:
             - containerPort: 8002
           env:
             - name: MASTER_WEIGHTS_RECEIVE_DIR
-              value: "/weights"  # Absolute path to store weights in the container
+              value: "/master_received_weights_json"  # Absolute path to store weights in the container
             - name: NODE_NOTBOOK_DIR
-              value: "/notebook"  # Absolute path to store node information
+              value: "/nodes_notebook"  # Absolute path to store node information
           volumeMounts:
-            - mountPath: /weights  # Absolute path in the container
+            - mountPath: /master_received_weights_json  # Absolute path in the container
               name: master-weights
-            - mountPath: /notebook  # Absolute path in the container
+            - mountPath: /nodes_notebook  # Absolute path in the container
               name: node-notebook
       volumes:
         - name: master-weights
