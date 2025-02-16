@@ -28,7 +28,7 @@ import uvicorn, os, traceback
 
 # Define global variables
 MASTER_WEIGHTS_RECEIVE_DIR = "./master_received_weights_json"
-NODE_NOTBOOK_DIR = os.getenv("NODE_NOTBOOK_DIR")
+NODE_NOTBOOK_DIR = "./nodes_notebook"
 
 # Application's main functionality
 app = FastAPI()
