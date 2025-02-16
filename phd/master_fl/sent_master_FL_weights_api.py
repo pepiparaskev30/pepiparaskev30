@@ -20,7 +20,7 @@ training knowledge
 '''
 
 # Import necessary libraries
-from utilities import append_to_csv_nodes
+from utilities import append_record_to_csv
 from fastapi import FastAPI, File, Form
 from fastapi.responses import JSONResponse
 from fastapi import UploadFile
@@ -28,7 +28,7 @@ import uvicorn, os, traceback
 
 # Define global variables
 MASTER_WEIGHTS_RECEIVE_DIR = "./master_received_weights_json"
-NODE_NOTBOOK_DIR = "./node_notebook"
+NODE_NOTBOOK_DIR = os.getenv("NODE_NOTBOOK_DIR")
 
 # Application's main functionality
 app = FastAPI()
@@ -56,16 +56,11 @@ async def upload_file(
         traceback.print_exc()
         raise
     
-    # Ensure the directory for the notebook exists
-    if not os.path.exists(NODE_NOTBOOK_DIR):
-        os.makedirs(NODE_NOTBOOK_DIR)
-    
-    # Define the file path for the node notebook
     notebook_file_path = f"{NODE_NOTBOOK_DIR}"+"/"+"nodes_notebook.csv"
     print(f"Appending node name to {notebook_file_path}", flush=True)
     
     # Append the node name to the CSV file
-    append_to_csv_nodes(notebook_file_path, node_name)
+    append_record_to_csv(notebook_file_path, list(node_name))
 
     return JSONResponse(content={"message": "File and node name uploaded successfully to the master node"}, status_code=200)
 

@@ -1,14 +1,18 @@
-import csv
+import csv, os
 
-def append_to_csv_nodes(NODE_NOTBOOK_DIR,node_name):
-    file_path = NODE_NOTBOOK_DIR+"/"+f"nodes_notebook.csv"
+def append_record_to_csv(file_path, record):
+    # Ensure the record is structured correctly (e.g., list of values)
+    if not isinstance(record, list):
+        raise ValueError("Record must be a list")
+
+    # Open the file in append mode ('a')
     with open(file_path, 'a', newline='') as csvfile:
-        fieldnames = ['Nodename']
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-        # If the file is empty, write the header
+        writer = csv.writer(csvfile)
+        print(f"{record} has been recorded")
+        
+        # Check if file is empty
         if csvfile.tell() == 0:
-            writer.writeheader()
-
-        # Append the metrics
-        writer.writerow({'Nodename': node_name})
+            # If empty, write header first (assuming it's ["Nodename"])
+            writer.writerow(["Nodename"])
+        
+        writer.writerow(record)
