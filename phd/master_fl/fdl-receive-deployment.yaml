@@ -18,7 +18,7 @@ spec:
         node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v10  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v11  # Replace with your Docker image name
           ports:
             - containerPort: 8002
           env:

@@ -1,4 +1,4 @@
-docker build -t client_pod:v195 . && docker tag client_pod:v195 pepi1989/client_pod:v195 && docker push pepi1989/client_pod:v195
+docker build -t client_pod:v196 . && docker tag client_pod:v196 pepi1989/client_pod:v196 && docker push pepi1989/client_pod:v196
 kubectl apply -f agent_role_role_binding.yaml
 kubectl apply -f agent_deployment.yaml
 
@@ -18,7 +18,7 @@ kubectl label nodes <node-name> custom-label=pepi-master
 
 # for master weights receive functionlity
 
-docker build -t fdl_master:v10  . && docker tag fdl_master:v10 pepi1989/fdl_master:v10  && docker push pepi1989/fdl_master:v10 
+docker build -t fdl_master:v11  . && docker tag fdl_master:v11 pepi1989/fdl_master:v11  && docker push pepi1989/fdl_master:v11 
 kubectl apply -f fdl-receive-master-weights-pvc.yaml
 kubectl apply -f fdl-receive-node-notebook-pvc.yaml
 kubectl apply -f fdl-receive-deployment.yaml
