@@ -60,7 +60,7 @@ async def upload_file(
     print(f"Appending node name to {notebook_file_path}", flush=True)
     
     # Append the node name to the CSV file
-    append_record_to_csv(notebook_file_path, list(node_name))
+    append_record_to_csv(notebook_file_path, node_name)
 
     return JSONResponse(content={"message": "File and node name uploaded successfully to the master node"}, status_code=200)
 

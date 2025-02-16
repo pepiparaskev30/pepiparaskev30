@@ -18,7 +18,7 @@ kubectl label nodes <node-name> custom-label=pepi-master
 
 # for master weights receive functionlity
 
-docker build -t fdl_master:v11  . && docker tag fdl_master:v11 pepi1989/fdl_master:v11  && docker push pepi1989/fdl_master:v11 
+docker build -t fdl_master:v12  . && docker tag fdl_master:v12 pepi1989/fdl_master:v12  && docker push pepi1989/fdl_master:v12
 kubectl apply -f fdl-receive-master-weights-pvc.yaml
 kubectl apply -f fdl-receive-node-notebook-pvc.yaml
 kubectl apply -f fdl-receive-deployment.yaml
