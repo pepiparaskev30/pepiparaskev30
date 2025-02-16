@@ -18,14 +18,16 @@ kubectl label nodes <node-name> custom-label=pepi-master
 
 # for master weights receive functionlity
 
-docker build -t fdl_master:v7  . && docker tag fdl_master:v7 pepi1989/fdl_master:v7  && docker push pepi1989/fdl_master:v7 
+docker build -t fdl_master:v10  . && docker tag fdl_master:v10 pepi1989/fdl_master:v10  && docker push pepi1989/fdl_master:v10 
 kubectl apply -f fdl-receive-master-weights-pvc.yaml
 kubectl apply -f fdl-receive-node-notebook-pvc.yaml
 kubectl apply -f fdl-receive-deployment.yaml
 kubectl apply -f fdl-receive-service.yaml
 
+
+
 # to delete
-kubectl delete -f fdl-receive-master-weights-pvc.yaml
-kubectl delete -f fdl-receive-node-notebook-pvc.yaml
 kubectl delete -f fdl-receive-deployment.yaml
 kubectl delete -f fdl-receive-service.yaml
+kubectl delete -f fdl-receive-master-weights-pvc.yaml
+kubectl delete -f fdl-receive-node-notebook-pvc.yaml

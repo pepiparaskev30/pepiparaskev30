@@ -9,13 +9,9 @@ RUN apt-get update && apt-get install -y \
 
 # Create directories for saving files and logs in a single RUN command
 RUN mkdir -p /app/master_received_weights_json \
-            /app/node_notebook
+            /app/nodes_notebook
 
-# Create an empty nodes_notebook.csv file inside the node_notebook directory
-RUN touch /app/node_notebook/nodes_notebook.csv
 
-# Ensure that the file has proper permissions for writing (especially if running as non-root user)
-RUN chmod 666 /app/node_notebook/nodes_notebook.csv
 
 # Set the working directory in the container
 WORKDIR /app
