@@ -116,6 +116,7 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = "./"
+NODES_NOTEBOOK = "./nodes_nodebook"
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -698,7 +699,10 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                             print("Welcome to Federated Learning!!", flush=True)
                             time.sleep(1)
                             federated_learning_send(target_resource)
+                            for file in os.listdir(NODES_NOTEBOOK):
+                                print(file)
                             print("wait now!!!", flush=True)
+                            time.sleep(1000)
                             while True:
                                 federated_weights = federated_receive(FEDERATION_URL_RECEIVE, target_resource=target_resource)
                                 

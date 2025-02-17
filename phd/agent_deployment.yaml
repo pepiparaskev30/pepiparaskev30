@@ -23,7 +23,7 @@ spec:
                       - "pepi-master"  # Ensure the node has this label to schedule the pod
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v197  # Replace this with your correct image
+          image: pepi1989/client_pod:v198  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
@@ -42,3 +42,12 @@ spec:
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"  # Prometheus service URL
             - name: FEDERATION_URL_SEND
               value: "http://fed-master-service:8002/upload_weights_fdl_master"
+          volumeMounts:
+            - mountPath: /nodes_notebook  # Absolute path in the container
+              name: node-notebook
+      volumes:
+        - name: node-notebook
+          persistentVolumeClaim:
+            claimName: node-notebook-pvc  # Make sure this PVC exists
+
+          

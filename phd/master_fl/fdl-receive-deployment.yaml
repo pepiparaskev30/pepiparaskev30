@@ -18,7 +18,7 @@ spec:
         node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v12  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v13  # Replace with your Docker image name
           ports:
             - containerPort: 8002
           env:
@@ -26,11 +26,19 @@ spec:
               value: "/master_received_weights_json"  # Absolute path to store weights in the container
             - name: NODE_NOTBOOK_DIR
               value: "/nodes_notebook"  # Absolute path to store node information
+            - name: AGGREGATED_JSON_FILES
+              value: "/aggregated_json_files"# Absolute path to store node information
+            - name: FEDERATED_WEIGHTS_PATH_SEND
+              value: "/federated_send_results"
           volumeMounts:
             - mountPath: /master_received_weights_json  # Absolute path in the container
               name: master-weights
             - mountPath: /nodes_notebook  # Absolute path in the container
               name: node-notebook
+            - mountPath: /aggregated_json_files
+              name: aggregated-json-files
+            - mountpath: /federated_send_results
+              name: federated-send-results
       volumes:
         - name: master-weights
           persistentVolumeClaim:
@@ -38,3 +46,10 @@ spec:
         - name: node-notebook
           persistentVolumeClaim:
             claimName: node-notebook-pvc  # Make sure this PVC exists
+        - name: aggregated-json-files
+          persistentVolumeClaim:
+            claimName: aggregated-json-file-pvc  # Make sure this PVC exists
+        - name: federated-send-results
+          persistentVolumeClaim:
+            claimName: federated-send-results-pvc  # Make sure this PVC exists
+

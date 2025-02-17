@@ -1,4 +1,4 @@
-docker build -t client_pod:v197 . && docker tag client_pod:v197 pepi1989/client_pod:v197 && docker push pepi1989/client_pod:v197
+docker build -t client_pod:v198 . && docker tag client_pod:v198 pepi1989/client_pod:v198 && docker push pepi1989/client_pod:v198
 kubectl apply -f agent_role_role_binding.yaml
 kubectl apply -f agent_deployment.yaml
 
@@ -18,9 +18,11 @@ kubectl label nodes <node-name> custom-label=pepi-master
 
 # for master weights receive functionlity
 
-docker build -t fdl_master:v12  . && docker tag fdl_master:v12 pepi1989/fdl_master:v12  && docker push pepi1989/fdl_master:v12
+docker build -t fdl_master:v13  . && docker tag fdl_master:v13 pepi1989/fdl_master:v13  && docker push pepi1989/fdl_master:v13
 kubectl apply -f fdl-receive-master-weights-pvc.yaml
 kubectl apply -f fdl-receive-node-notebook-pvc.yaml
+kubectl apply -f fdl-master-aggregated-json-files-pvc.yaml
+kubectl apply -f fdl-master-federated-send-results-pvc.yaml
 kubectl apply -f fdl-receive-deployment.yaml
 kubectl apply -f fdl-receive-service.yaml
 
@@ -31,3 +33,5 @@ kubectl delete -f fdl-receive-deployment.yaml
 kubectl delete -f fdl-receive-service.yaml
 kubectl delete -f fdl-receive-master-weights-pvc.yaml
 kubectl delete -f fdl-receive-node-notebook-pvc.yaml
+kubectl delete -f fdl-master-aggregated-json-files-pvc.yaml
+kubectl delete -f fdl-master-federated-send-results-pvc.yaml
