@@ -34,5 +34,6 @@ COPY main.py data_generation.py utilities.py test.py \
     LSTM_attention_model_training.py training_materials.py \
     elasticweightconsolidation.py evaluation_metrics.py /app/
 
+
 # Set the entry point to the shell script
 CMD ["python", "test.py"]
