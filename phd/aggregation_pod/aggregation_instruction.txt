@@ -1,0 +1,6 @@
+docker build -t master-aggregation-weights:v1 . && docker tag master-aggregation-weights:v1 pepi1989/master-aggregation-weights:v1 && docker push pepi1989/master-aggregation-weights:v1
+kubectl apply -f fdl-weight-aggregation-deployment.yaml
+
+
+# to delete
+kubectl delete -f fdl-weight-aggregation-deployment.yaml

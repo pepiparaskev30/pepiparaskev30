@@ -27,7 +27,7 @@ spec:
             claimName: node-notebook-pvc
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v199  # Replace this with your correct image
+          image: pepi1989/client_pod:v200  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME

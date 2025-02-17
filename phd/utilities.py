@@ -116,7 +116,7 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = "./"
-NODES_NOTEBOOK = os.getenv("NODE_NOTBOOK_DIR")
+
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
