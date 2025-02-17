@@ -1,29 +1,28 @@
 # Use the official Python 3.11 slim image as the base image
 FROM python:3.11-slim
 
-# Install wget and curl in a single RUN command to reduce layers
+# Install required system packages
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories for saving files and logs in a single RUN command
+# Create necessary directories
 RUN mkdir -p /app/master_received_weights_json \
             /app/federated_send_results \
             /app/aggregated_json_files
 
-
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Copy the required files into the container
-COPY requirements.txt sent_master_FL_weights_api.py utilities.py federated_weight_aggregration.py /app/
+# Copy application files
+COPY requirements.txt sent_master_FL_weights_api.py utilities.py federated_weight_aggregration.py start.sh /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Set the entry point to the shell script
-# Define the command to run your application
+# Ensure the script is executable
+RUN chmod +x /app/start.sh
 
-
-CMD ["sh", "-c", "python sent_master_FL_weights_api.py & federated_weight_aggregration.py"]
+# Run the startup script
+CMD ["/bin/sh", "/app/start.sh"]
