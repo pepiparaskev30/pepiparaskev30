@@ -9,10 +9,8 @@ RUN apt-get update && apt-get install -y \
 
 # Create directories for saving files and logs in a single RUN command
 RUN mkdir -p /app/master_received_weights_json \
-            /app/nodes_notebook \
             /app/federated_send_results \
             /app/aggregated_json_files
-
 
 
 # Set the working directory in the container

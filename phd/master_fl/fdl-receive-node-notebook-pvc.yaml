@@ -9,3 +9,4 @@ spec:
     requests:
       storage: 1Gi  # Adjust storage size based on your requirements
   storageClassName: standard
+
