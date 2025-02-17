@@ -19,7 +19,7 @@ RUN mkdir -p /app/master_received_weights_json \
 WORKDIR /app
 
 # Copy the required files into the container
-COPY requirements.txt sent_master_FL_weights_api.py utilities.py federated_weight_aggregation.py /app/
+COPY requirements.txt sent_master_FL_weights_api.py utilities.py federated_weight_aggregration.py /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
