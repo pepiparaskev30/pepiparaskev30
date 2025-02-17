@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy the required files into the container
-COPY requirements.txt federated_weight_aggregation.py utilities.py /app/
+COPY requirements.txt federated_weight_aggregration.py utilities.py /app/
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -20,4 +20,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Define the command to run your application
 
 
-CMD ["python", "federated_weight_aggregation.py"]
+CMD ["python", "federated_weight_aggregration.py"]
