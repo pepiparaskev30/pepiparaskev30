@@ -26,4 +26,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Define the command to run your application
 
 
-CMD ["sh", "-c", "python sent_master_FL_weights_api.py & federated_weight_aggregation.py"]
+CMD ["sh", "-c", "python sent_master_FL_weights_api.py & federated_weight_aggregration.py"]
