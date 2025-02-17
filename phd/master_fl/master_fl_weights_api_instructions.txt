@@ -1,0 +1,20 @@
+
+# for master weights receive functionlity
+
+docker build -t fdl_master:v19  . && docker tag fdl_master:v19 pepi1989/fdl_master:v19  && docker push pepi1989/fdl_master:v19
+kubectl apply -f fdl-receive-master-weights-pvc.yaml
+kubectl apply -f fdl-receive-node-notebook-pvc.yaml
+kubectl apply -f fdl-master-aggregated-json-files-pvc.yaml
+kubectl apply -f fdl-master-federated-send-results-pvc.yaml
+kubectl apply -f fdl-receive-deployment.yaml
+kubectl apply -f fdl-receive-service.yaml
+
+
+
+# to delete
+kubectl delete -f fdl-receive-deployment.yaml
+kubectl delete -f fdl-receive-service.yaml
+kubectl delete -f fdl-receive-master-weights-pvc.yaml
+kubectl delete -f fdl-receive-node-notebook-pvc.yaml
+kubectl delete -f fdl-master-aggregated-json-files-pvc.yaml
+kubectl delete -f fdl-master-federated-send-results-pvc.yaml

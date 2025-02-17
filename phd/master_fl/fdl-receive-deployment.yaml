@@ -31,26 +31,17 @@ spec:
             claimName: federated-send-results-pvc  # Make sure this PVC exists
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v18  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v19  # Replace with your Docker image name
           ports:
             - containerPort: 8002
-          env:
-            - name: MASTER_WEIGHTS_RECEIVE_DIR
-              value: "/master_received_weights_json"  # Absolute path to store weights in the container
-            - name: NODE_NOTBOOK_DIR
-              value: "/mnt/nodes_notebook"  # Absolute path to store node information
-            - name: AGGREGATED_JSON_FILES
-              value: "/aggregated_json_files"  # Absolute path to store node information
-            - name: FEDERATED_WEIGHTS_PATH_SEND
-              value: "/federated_send_results"
           volumeMounts:
-            - mountPath: /mnt/nodes_notebook
+            - mountPath: /app/nodes_notebook
               name: node-notebook
-            - mountPath: /master_received_weights_json  # Absolute path in the container
+            - mountPath: /app/master_received_weights_json  # Absolute path in the container
               name: master-weights
-            - mountPath: /aggregated_json_files
+            - mountPath: /app/aggregated_json_files
               name: aggregated-json-files
-            - mountPath: /federated_send_results  # Corrected key from `mountpath`
+            - mountPath: /app/federated_send_results  # Corrected key from `mountpath`
               name: federated-send-results
 
 
