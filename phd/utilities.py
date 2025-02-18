@@ -521,12 +521,12 @@ def federated_learning_send(target_resource, max_retries=100):
         retry_count = 0
         while response.status_code != 200 and retry_count < max_retries:
             time.sleep(1)
-            print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n - MESSAGE: Request is not completed. Retrying...")
+            print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n - MESSAGE: Request is not completed. Retrying...", flush=True)
             response = requests.post(FEDERATION_URL_SEND, files=files)
             retry_count += 1
 
         if response.status_code != 200:
-            print("[ERROR]: Max retries reached. Request not completed.")
+            print("[ERROR]: Max retries reached. Request not completed.", flush=True)
 
 def federated_receive(url, target_resource, max_retries=100, retry_delay=2):
     payload = {"file_type": target_resource}
@@ -653,7 +653,6 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
     if row_count>=15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
         for i in range(0,3):
-            print(i, flush=True)
             if  iterator == 0:
                 updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
                 features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
@@ -699,10 +698,8 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                             print("Welcome to Federated Learning!!", flush=True)
                             time.sleep(1)
                             federated_learning_send(target_resource)
-                            for file in os.listdir(NODES_NOTEBOOK):
-                                print(file)
                             print("wait now!!!", flush=True)
-                            time.sleep(1000)
+                            time.sleep(10)
                             while True:
                                 federated_weights = federated_receive(FEDERATION_URL_RECEIVE, target_resource=target_resource)
                                 
@@ -719,7 +716,9 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                     else:
                         print("Welcome to \n Federated Learning!!")
                         time.sleep(1)
-                        federated_learning_send(target_resource) 
+                        federated_learning_send(target_resource)
+                        print("wait now!!!", flush=True)
+                        time.sleep(10) 
                         federated_receive(FEDERATION_URL_RECEIVE)
                         while True:
                             federated_weights = federated_receive(FEDERATION_URL_RECEIVE)
