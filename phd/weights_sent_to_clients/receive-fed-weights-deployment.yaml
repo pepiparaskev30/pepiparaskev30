@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: receive-fed-weights
+  labels:
+    app: mreceive-fed-weights
+spec:
+  replicas: 1  # Number of replicas for scaling
+  selector:
+    matchLabels:
+      app: receive-fed-weights  # Ensure labels match with the template
+  template:
+    metadata:
+      labels:
+        app: receive-fed-weights  # Ensure labels match with the selector
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
+      volumes:
+        - name: aggregated-json-files
+          persistentVolumeClaim:
+            claimName: aggregated-json-file-pvc  # Make sure this PVC exists
+      containers:
+        - name: receive-fed-weights
+          image: pepi1989/receive-fed-weights:v1  # Replace with your Docker image name
+          volumeMounts:
+            - mountPath: /app/aggregated_json_files
+              name: aggregated-json-files
+
+

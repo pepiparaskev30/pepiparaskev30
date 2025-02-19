@@ -1,0 +1,6 @@
+fastapi==0.115.5
+pydantic>=1.10.2,<2.0.0
+python-multipart
+numpy==1.23.3
+uvicorn==0.23.2
+werkzeug==3.0.0
