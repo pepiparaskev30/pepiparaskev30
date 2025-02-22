@@ -31,7 +31,7 @@ spec:
             claimName: federated-send-results-pvc  # Make sure this PVC exists
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v19  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v20  # Replace with your Docker image name
           ports:
             - containerPort: 8002
           volumeMounts:
