@@ -15,7 +15,7 @@ spec:
         app: master-aggregation-weights  # Ensure labels match with the selector
     spec:
       nodeSelector:
-        node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
+        custom-label: pepi-master  # Matches the label on pepi-master
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
