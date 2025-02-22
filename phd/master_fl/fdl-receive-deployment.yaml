@@ -15,7 +15,7 @@ spec:
         app: fed-master-receive  # Ensure labels match with the selector
     spec:
       nodeSelector:
-        node-role.kubernetes.io/pepi-master: "true"  # Schedule pods on the specific node
+        node-role.kubernetes.io/master-node: "true"  # Schedule pods on the specific node
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
