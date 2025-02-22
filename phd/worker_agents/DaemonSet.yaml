@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-specific-app
+spec:
+  selector:
+    matchLabels:
+      app: node-info
+  template:
+    metadata:
+      labels:
+        app: node-info
+    spec:
+      serviceAccountName: agent-sa  # 🔹 Add this here
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: custom-label
+                    operator: In
+                    values:
+                      - "worker-1"
+                      - "worker-2"
+                      - "worker-3"
+      containers:
+        - name: name-node-container
+          image: pepi1989/client_pod:v203
+          imagePullPolicy: Always
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+            - name: FEDERATION_URL_SEND
+              value: "http://fed-master-service:8002/upload_weights_fdl_master"
+            - name: FEDERATION_URL_RECEIVE
+              value: "http://eceive-fed-weights-service:8001/get_aggregated_json_weights"
