@@ -8,27 +8,31 @@ spec:
   replicas: 1  # Number of replicas for scaling
   selector:
     matchLabels:
-      app: fed-master-receive  # Ensure labels match with the template
+      app: fed-master-receive
   template:
     metadata:
       labels:
-        app: fed-master-receive  # Ensure labels match with the selector
+        app: fed-master-receive
     spec:
       nodeSelector:
-        custom-label: pepi-master  # Schedule pods on the specific node
+        custom-label: pepi-master  # Matches the label on pepi-master
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
             claimName: node-notebook-pvc
         - name: master-weights
           persistentVolumeClaim:
-            claimName: master-weights-pvc  # Make sure this PVC exists
+            claimName: master-weights-pvc
         - name: aggregated-json-files
           persistentVolumeClaim:
-            claimName: aggregated-json-file-pvc  # Make sure this PVC exists
+            claimName: aggregated-json-file-pvc
         - name: federated-send-results
           persistentVolumeClaim:
-            claimName: federated-send-results-pvc  # Make sure this PVC exists
+            claimName: federated-send-results-pvc
       containers:
         - name: fed-master-receive
           image: pepi1989/fdl_master:v20  # Replace with your Docker image name
@@ -37,9 +41,9 @@ spec:
           volumeMounts:
             - mountPath: /app/nodes_notebook
               name: node-notebook
-            - mountPath: /app/master_received_weights_json  # Absolute path in the container
+            - mountPath: /app/master_received_weights_json
               name: master-weights
             - mountPath: /app/aggregated_json_files
               name: aggregated-json-files
-            - mountPath: /app/federated_send_results  # Corrected key from `mountpath`
+            - mountPath: /app/federated_send_results
               name: federated-send-results

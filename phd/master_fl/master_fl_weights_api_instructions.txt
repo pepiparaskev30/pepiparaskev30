@@ -1,7 +1,7 @@
 
 # for master weights receive functionlity
 
-docker build -t fdl_master:v19  . && docker tag fdl_master:v19 pepi1989/fdl_master:v19  && docker push pepi1989/fdl_master:v19
+docker build -t fdl_master:v20  . && docker tag fdl_master:v20 pepi1989/fdl_master:v20  && docker push pepi1989/fdl_master:v20
 kubectl apply -f fdl-receive-master-weights-pvc.yaml
 kubectl apply -f fdl-receive-node-notebook-pvc.yaml
 kubectl apply -f fdl-master-aggregated-json-files-pvc.yaml
