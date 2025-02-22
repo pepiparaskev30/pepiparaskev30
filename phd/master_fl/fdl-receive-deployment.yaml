@@ -15,20 +15,24 @@ spec:
         app: fed-master-receive  # Ensure labels match with the selector
     spec:
       nodeSelector:
-        custom-label: master-node  # Matches the label on pepi-master
+        node-role.kubernetes.io/master-node: "true"  # Schedule pods on the specific node
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
             claimName: node-notebook-pvc
         - name: master-weights
           persistentVolumeClaim:
-            claimName: master-weights-pvc  # Ensure this PVC exists
+            claimName: master-weights-pvc  # Make sure this PVC exists
         - name: aggregated-json-files
           persistentVolumeClaim:
-            claimName: aggregated-json-file-pvc  # Ensure this PVC exists
+            claimName: aggregated-json-file-pvc  # Make sure this PVC exists
         - name: federated-send-results
           persistentVolumeClaim:
-            claimName: federated-send-results-pvc  # Ensure this PVC exists
+            claimName: federated-send-results-pvc  # Make sure this PVC exists
       containers:
         - name: fed-master-receive
           image: pepi1989/fdl_master:v19  # Replace with your Docker image name
@@ -41,5 +45,5 @@ spec:
               name: master-weights
             - mountPath: /app/aggregated_json_files
               name: aggregated-json-files
-            - mountPath: /app/federated_send_results
+            - mountPath: /app/federated_send_results  # Corrected key from `mountpath`
               name: federated-send-results
