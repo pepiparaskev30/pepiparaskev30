@@ -14,8 +14,6 @@ spec:
       labels:
         app: fed-master-receive  # Ensure labels match with the selector
     spec:
-      nodeSelector:
-        custom-label: master-node  # Schedule pods on the specific node
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
