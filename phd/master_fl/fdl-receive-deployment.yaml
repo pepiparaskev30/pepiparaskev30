@@ -14,10 +14,8 @@ spec:
       labels:
         app: fed-master-receive  # Ensure labels match with the selector
     spec:
-      tolerations:
-        - key: "node-role.kubernetes.io/control-plane"
-          operator: "Exists"
-          effect: "NoSchedule"
+      nodeSelector:
+        custom-label: pepi-master  # Schedule pods on the specific node
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
