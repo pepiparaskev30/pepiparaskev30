@@ -29,7 +29,7 @@ spec:
             claimName: node-notebook-pvc
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v202  # Replace this with your correct image
+          image: pepi1989/client_pod:v203  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
@@ -50,10 +50,6 @@ spec:
               value: "http://fed-master-service:8002/upload_weights_fdl_master"
             - name: FEDERATION_URL_RECEIVE
               value: "http://eceive-fed-weights-service:8001/get_aggregated_json_weights"
-            - name: NODE_NOTBOOK_DIR
-              value: "/mnt/nodes_notebook"  # Absolute path to store node information
-          volumeMounts:
-            - mountPath: /app/nodes_notebook
-              name: node-notebook
+
 
           
