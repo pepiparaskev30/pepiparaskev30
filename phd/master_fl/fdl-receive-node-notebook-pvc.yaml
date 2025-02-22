@@ -4,7 +4,7 @@ metadata:
   name: node-notebook-pvc
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi  # Adjust storage size based on your requirements
