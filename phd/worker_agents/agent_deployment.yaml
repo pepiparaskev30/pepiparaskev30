@@ -20,16 +20,16 @@ spec:
                   - key: custom-label
                     operator: In
                     values:
-                      - "experimental-cluster-worker"
-                      - "experimental-cluster-worker2"
-                      - "experimental-cluster-worker3"  # Ensure the node has this label to schedule the pod
+                      - "worker-1"
+                      - "worker-2"
+                      - "worker-3"  # Ensure the node has this label to schedule the pod
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
             claimName: node-notebook-pvc
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v201  # Replace this with your correct image
+          image: pepi1989/client_pod:v202  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
