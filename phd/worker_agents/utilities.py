@@ -115,7 +115,7 @@ FEDERATED_WEIGHTS_PATH_RECEIVE = "./federated_received_results"
 FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
-FEDERATION_URL_RECEIVE = "./"
+FEDERATION_URL_RECEIVE = os.getenv("FEDERATION_URL_RECEIVE")
 
 
 class Gatherer:

@@ -20,7 +20,9 @@ spec:
                   - key: custom-label
                     operator: In
                     values:
-                      - "pepi-master"  # Ensure the node has this label to schedule the pod
+                      - "experimental-cluster-worker"
+                      - "experimental-cluster-worker2"
+                      - "experimental-cluster-worker3"  # Ensure the node has this label to schedule the pod
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
@@ -46,10 +48,12 @@ spec:
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"  # Prometheus service URL
             - name: FEDERATION_URL_SEND
               value: "http://fed-master-service:8002/upload_weights_fdl_master"
+            - name: FEDERATION_URL_RECEIVE
+              value: "http://eceive-fed-weights-service:8001/get_aggregated_json_weights"
             - name: NODE_NOTBOOK_DIR
               value: "/mnt/nodes_notebook"  # Absolute path to store node information
           volumeMounts:
-            - mountPath: /mnt/nodes_notebook
+            - mountPath: /app/nodes_notebook
               name: node-notebook
 
           
