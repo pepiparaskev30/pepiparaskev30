@@ -16,6 +16,10 @@ spec:
     spec:
       nodeSelector:
         custom-label: pepi-master  # Matches the label on pepi-master
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       volumes:
         - name: node-notebook
           persistentVolumeClaim:
