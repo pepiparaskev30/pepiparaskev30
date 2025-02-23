@@ -1,9 +1,13 @@
 # Use the official Python 3.11 slim image as the base
 FROM python:3.11-slim
 
-# Install dependencies (including gfortran for SciPy)
 RUN apt-get update && apt-get install -y \
-    wget curl g++ gfortran \
+    build-essential \
+    cmake \
+    pkg-config \
+    libopenblas-dev \
+    liblapack-dev \
+    gfortran \
     && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
