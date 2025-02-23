@@ -15,7 +15,7 @@ spec:
         app: master-aggregation-weights  # Ensure labels match with the selector
     spec:
       nodeSelector:
-        custom-label: pepi-master  # Matches the label on pepi-master
+        custom-label: control-plane-node  # Matches the label on pepi-master
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
