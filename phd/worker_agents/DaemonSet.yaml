@@ -21,17 +21,26 @@ spec:
                     operator: In
                     values:
                       - "worker-1"
+      volumes:
+        - name: cache-volume
+          emptyDir:
+            sizeLimit: 2Gi  # 🔹 Temporary storage limited to 2Gi
       containers:
         - name: name-node-container
           image: pepi1989/client_pod:v203
           imagePullPolicy: Always
           resources:
-            requests:   # Minimum resources the container is guaranteed
+            requests:
               cpu: "500m"  # 0.5 CPU
               memory: "1Gi"  # 1GB RAM
-            limits:  # Maximum resources the container can use
+              ephemeral-storage: "2Gi"  # Minimum 2Gi of ephemeral storage
+            limits:
               cpu: "2"  # 2 full CPUs
               memory: "4Gi"  # 4GB RAM
+              ephemeral-storage: "5Gi"  # Max 5Gi of ephemeral storage
+          volumeMounts:
+            - mountPath: "/cache"
+              name: cache-volume  # 🔹 Mount emptyDir as cache
           env:
             - name: POD_NAME
               valueFrom:
