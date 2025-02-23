@@ -4,9 +4,10 @@ metadata:
   name: receive-fed-weights-service
 spec:
   selector:
-    app: receive-fed-weights-service
+    app: receive-fed-weights  # FIX: Must match the Deployment label
   ports:
     - protocol: TCP
-      port: 8001
-      targetPort: 8001
-  clusterIP: None  # This is for headless service (useful for communication between pods)
+      port: 8001  # External service port
+      targetPort: 8001  # Matches containerPort in Deployment
+  type: ClusterIP  # Default type (removing `clusterIP: None` unless needed)
+
