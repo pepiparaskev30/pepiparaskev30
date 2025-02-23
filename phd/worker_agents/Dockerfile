@@ -1,37 +1,28 @@
-# Use a slim Python base image
+# Use the official Python 3.11 slim image as the base image
 FROM python:3.11-slim
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Install system dependencies required for building SciPy, NumPy, etc.
+# Install necessary build dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    pkg-config \
+    wget \
+    curl \
+    gfortran \
     libopenblas-dev \
     liblapack-dev \
-    gfortran \
     python3-dev \
+    build-essential \
+    cmake \
+    ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip and install necessary Python dependencies
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
-
-# Ensure the correct version of gast is installed
-RUN pip install --no-cache-dir "gast>=0.5.4"
-
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
 # Copy requirements file
 COPY requirements.txt /app/
 
-# Install Python packages WITHOUT AVX optimizations
+# Install necessary Python packages without AVX
 RUN pip install --no-cache-dir -r requirements.txt \
-    --no-binary numpy,scipy,tensorflow,torch  # Force build without AVX
-
+    --no-binary numpy,scipy,tensorflow,torch
 # Copy application code
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
