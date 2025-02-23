@@ -31,13 +31,13 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: "500m"  # 0.5 CPU
-              memory: "1Gi"  # 1GB RAM
-              ephemeral-storage: "2Gi"  # Minimum 2Gi of ephemeral storage
+              cpu: "1"  # Increase from 500m (0.5 CPU) to 1 full CPU
+              memory: "2Gi"  # Increase from 1Gi to 2Gi
+              ephemeral-storage: "4Gi"  # Increase from 2Gi to 4Gi
             limits:
-              cpu: "2"  # 2 full CPUs
-              memory: "4Gi"  # 4GB RAM
-              ephemeral-storage: "5Gi"  # Max 5Gi of ephemeral storage
+              cpu: "4"  # Increase from 2 CPUs to 4
+              memory: "8Gi"  # Increase from 4Gi to 8Gi
+              ephemeral-storage: "10Gi"  # Increase from 5Gi to 10Gi
           volumeMounts:
             - mountPath: "/cache"
               name: cache-volume  # 🔹 Mount emptyDir as cache
