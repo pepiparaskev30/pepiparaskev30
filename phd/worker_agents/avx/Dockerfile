@@ -1,14 +1,13 @@
 # Use the official Python 3.11 slim image as the base image
 FROM python:3.11-slim
 
-# Install wget, curl, and essential build tools
+# Install wget and curl in a single RUN command to reduce layers
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
-    g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories for saving files and logs
+# Create directories for saving files and logs in a single RUN command
 RUN mkdir -p /app/saved_models \
     /app/weights_path \
     /app/log_path_file \
@@ -21,20 +20,20 @@ RUN mkdir -p /app/saved_models \
 # Set the working directory in the container
 WORKDIR /app
 
-# Create an empty CSV file and add headers
+# Create an empty CSV file and add headers in a single RUN command
 RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_generation_path/data.csv
 
 # Copy requirements.txt into the container
 COPY requirements.txt /app/
 
-# Install Python dependencies **without AVX optimizations**
-RUN pip install --no-cache-dir -r /app/requirements.txt \
-    --no-binary numpy,scipy,tensorflow,torch  # Ensures no prebuilt AVX-dependent binaries
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all Python scripts and other necessary files
+# Copy all Python scripts and other necessary files into the container in a single COPY command
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
     elasticweightconsolidation.py evaluation_metrics.py /app/
+
 
 # Set the entry point to the shell script
 CMD ["python", "main.py"]

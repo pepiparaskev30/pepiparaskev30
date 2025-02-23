@@ -27,7 +27,7 @@ spec:
             sizeLimit: 2Gi  # 🔹 Temporary storage limited to 2Gi
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v203
+          image: pepi1989/client_pod:v204
           imagePullPolicy: Always
           resources:
             requests:
