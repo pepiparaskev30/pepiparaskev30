@@ -11,7 +11,7 @@ spec:
       labels:
         app: node-info
     spec:
-      serviceAccountName: agent-sa  # 🔹 Add this here
+      serviceAccountName: agent-sa  # 🔹 Ensures correct permissions
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -27,6 +27,13 @@ spec:
         - name: name-node-container
           image: pepi1989/client_pod:v203
           imagePullPolicy: Always
+          resources:
+            requests:   # Minimum resources the container is guaranteed
+              cpu: "500m"  # 0.5 CPU
+              memory: "1Gi"  # 1GB RAM
+            limits:  # Maximum resources the container can use
+              cpu: "2"  # 2 full CPUs
+              memory: "4Gi"  # 4GB RAM
           env:
             - name: POD_NAME
               valueFrom:
