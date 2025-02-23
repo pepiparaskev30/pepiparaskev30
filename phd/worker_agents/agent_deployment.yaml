@@ -12,18 +12,15 @@ spec:
       labels:
         app: node-info
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            nodeSelectorTerms:
-              - matchExpressions:
-                  - key: custom-label
-                    operator: In
-                    values:
-                      - "pepi-master"
+      nodeSelector:
+        custom-label: pepi-master  # Matches the label on pepi-master
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v202  # Replace this with your correct image
+          image: pepi1989/client_pod:v204  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
