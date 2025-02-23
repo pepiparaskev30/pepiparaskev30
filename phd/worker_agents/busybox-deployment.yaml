@@ -13,13 +13,8 @@ spec:
         app: busybox
     spec:
       nodeSelector:
-        custom-label: worker-2  # Ensure your node has this label
+        custom-label: worker-2  # 🔹 Ensures pods run on nodes with label worker-2
       containers:
         - name: busybox
           image: busybox
-          command: ["sleep", "3600"]  # Keeps the container running
-          resources:
-            limits:
-              memory: "64Mi"
-              cpu: "100m"
-          restartPolicy: Always
+          command: ["sleep", "3600"]  # Keeps the pod running
