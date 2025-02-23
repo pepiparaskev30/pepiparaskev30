@@ -15,7 +15,7 @@ spec:
         app: fed-master-receive
     spec:
       nodeSelector:
-        custom-label: control-plane-node  # Matches the label on pepi-master
+        custom-label: pepi-master  # Matches the label on pepi-master
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
