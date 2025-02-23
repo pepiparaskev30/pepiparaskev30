@@ -1,40 +1,25 @@
-# Use the official Python 3.11 slim image as the base image
+# Use the official Python 3.11 slim image as the base
 FROM python:3.11-slim
 
-# Install wget, curl, and essential build tools
+# Install dependencies (including gfortran for SciPy)
 RUN apt-get update && apt-get install -y \
-    wget \
-    curl \
-    g++ \
+    wget curl g++ gfortran \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories for saving files and logs
-RUN mkdir -p /app/saved_models \
-    /app/weights_path \
-    /app/log_path_file \
-    /app/evaluation_results \
-    /app/federated_send_results \
-    /app/data_generation_path \
-    /app/json_weights \
-    /app/federated_received_results
-
-# Set the working directory in the container
+# Set the working directory
 WORKDIR /app
 
-# Create an empty CSV file and add headers
-RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_generation_path/data.csv
-
-# Copy requirements.txt into the container
+# Copy requirements.txt
 COPY requirements.txt /app/
 
-# Install Python dependencies **without AVX optimizations**
-RUN pip install --no-cache-dir -r /app/requirements.txt \
-    --no-binary numpy,scipy,tensorflow,torch  # Ensures no prebuilt AVX-dependent binaries
+# Install Python packages **without AVX optimizations**
+RUN pip install --no-cache-dir -r requirements.txt \
+    --no-binary numpy,scipy,tensorflow,torch  # Force build without AVX
 
-# Copy all Python scripts and other necessary files
+# Copy application code
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
     elasticweightconsolidation.py evaluation_metrics.py /app/
 
-# Set the entry point to the shell script
+# Set the entry point
 CMD ["python", "main.py"]
