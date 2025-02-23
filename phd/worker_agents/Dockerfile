@@ -27,7 +27,7 @@ RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_g
 COPY requirements.txt /app/
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 # Copy all Python scripts and other necessary files into the container in a single COPY command
 COPY utilities.py main.py \
