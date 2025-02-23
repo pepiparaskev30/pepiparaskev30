@@ -27,18 +27,6 @@ spec:
         - name: name-node-container
           image: pepi1989/client_pod:v203
           imagePullPolicy: Always
-          resources:
-            requests:
-              cpu: "500m"   # Minimum CPU guarantee
-              memory: "4Gi"  # Minimum 4GB RAM
-              ephemeral-storage: "10Gi"  # Storage for pulling and unpacking
-            limits:
-              cpu: "4"  # Maximum CPU (4 full cores)
-              memory: "8Gi"  # Max memory 8GB
-              ephemeral-storage: "15Gi"  # Ensure enough space for the image
-          volumeMounts:
-            - mountPath: "/cache"
-              name: cache-volume  # 🔹 Mount emptyDir as cache
           env:
             - name: POD_NAME
               valueFrom:
