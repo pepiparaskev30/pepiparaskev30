@@ -31,13 +31,13 @@ spec:
           imagePullPolicy: Always
           resources:
             requests:
-              cpu: "1"  # Increase from 500m (0.5 CPU) to 1 full CPU
-              memory: "2Gi"  # Increase from 1Gi to 2Gi
-              ephemeral-storage: "4Gi"  # Increase from 2Gi to 4Gi
+              cpu: "500m"   # Minimum CPU guarantee
+              memory: "4Gi"  # Minimum 4GB RAM
+              ephemeral-storage: "10Gi"  # Storage for pulling and unpacking
             limits:
-              cpu: "4"  # Increase from 2 CPUs to 4
-              memory: "8Gi"  # Increase from 4Gi to 8Gi
-              ephemeral-storage: "10Gi"  # Increase from 5Gi to 10Gi
+              cpu: "4"  # Maximum CPU (4 full cores)
+              memory: "8Gi"  # Max memory 8GB
+              ephemeral-storage: "15Gi"  # Ensure enough space for the image
           volumeMounts:
             - mountPath: "/cache"
               name: cache-volume  # 🔹 Mount emptyDir as cache
