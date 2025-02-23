@@ -20,14 +20,12 @@ spec:
                   - key: custom-label
                     operator: In
                     values:
-                      - "worker-1"
-      volumes:
-        - name: cache-volume
-          emptyDir:
-            sizeLimit: 2Gi  # 🔹 Temporary storage limited to 2Gi
+                      - "worker-node-1"
+                      - "worker-node-2"
+                      - "worker-node-3"
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v204
+          image: pepi1989/client_pod:v203
           imagePullPolicy: Always
           resources:
             requests:
