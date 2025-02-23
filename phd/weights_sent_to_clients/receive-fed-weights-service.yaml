@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: eceive-fed-weights-service
+  name: receive-fed-weights-service
 spec:
   selector:
-    app: eceive-fed-weights-receive
+    app: receive-fed-weights-service
   ports:
     - protocol: TCP
       port: 8001
