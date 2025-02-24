@@ -35,21 +35,8 @@ spec:
           - weight: 50
             preference:
               matchExpressions:
-              - key: label-1
+              - key: worker-1
                 operator: In
                 values:
                 - key-1
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: label-2
-                operator: In
-                values:
-                - key-2
-          - weight: 30
-            preference:
-              matchExpressions:
-              - key: label-3
-                operator: In
-                values:
-                - key-2
+
