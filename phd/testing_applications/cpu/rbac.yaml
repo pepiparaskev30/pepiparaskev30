@@ -1,22 +1,22 @@
-# Create a Role for viewing nodes
+# Create a ClusterRole for accessing nodes
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
-  name: node-viewer
+  name: node-viewer-cluster
 rules:
 - apiGroups: [""]
   resources: ["nodes"]
   verbs: ["get", "list"]
 
 ---
-# Create a RoleBinding to bind the Role to the ServiceAccount
+# Create a ClusterRoleBinding to bind the ClusterRole to the ServiceAccount
 apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
+kind: ClusterRoleBinding
 metadata:
-  name: node-viewer-binding
+  name: node-viewer-cluster-binding
 roleRef:
-  name: node-viewer
-  kind: Role
+  name: node-viewer-cluster
+  kind: ClusterRole
 subjects:
 - kind: ServiceAccount
   name: cpu-app-sa
