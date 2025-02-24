@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     liblapack-dev \
     zlib1g-dev \
     unzip \
+    clang \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bazel manually
@@ -24,8 +25,29 @@ RUN git clone https://github.com/tensorflow/tensorflow.git
 # Change into TensorFlow directory
 WORKDIR /tensorflow
 
-# Configure TensorFlow build without AVX
-RUN ./configure
+# Configure TensorFlow build without AVX and interactive prompts
+ENV TF_NEED_CLANG=0
+ENV TF_NEED_CUDA=0
+ENV TF_NEED_ROCM=0
+ENV TF_SET_ANDROID_WORKSPACE=0
+ENV TF_DOWNLOAD_CLANG=0
+ENV TF_ENABLE_XLA=0
+ENV TF_NEED_OPENCL=0
+ENV TF_NEED_OPENCL_SYCL=0
+ENV TF_NEED_MPI=0
+ENV TF_NEED_GCP=0
+ENV TF_NEED_HDFS=0
+ENV TF_NEED_S3=0
+ENV TF_NEED_KAFKA=0
+ENV TF_NEED_JEMALLOC=1
+ENV TF_NEED_GDR=0
+ENV TF_NEED_VERBS=0
+ENV TF_NEED_LIBPCI=0
+ENV TF_NEED_AWS=0
+ENV TF_NEED_NCLI=0
+ENV TF_NEED_OPENSSL=1
+
+RUN ./configure --is_component_build=false --is_debug=false --is_monolithic=false --is_static=false --c_opt_flags=-mno-avx --cxx_opt_flags=-mno-avx --cpu_optimizations=generic --host_optimizations=generic --host_c_opt_flags=-mno-avx --host_cxx_opt_flags=-mno-avx
 
 # Build TensorFlow without AVX optimizations
 RUN bazel build --config=opt --copt=-mno-avx --copt=-mno-avx2 //tensorflow/tools/pip_package:build_pip_package
