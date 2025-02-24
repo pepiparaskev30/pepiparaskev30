@@ -1,1 +1,6 @@
 docker build -t pepi1989/cpu-app:v3 . && docker push pepi1989/cpu-app:v3
+
+
+kubectl apply -f cpu-app-deployment.yaml
+kubectl apply -f cpu-app-service.yaml
+kubectl apply -f rbac.yaml 
