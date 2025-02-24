@@ -1,39 +1,52 @@
-# Use the official Python 3.11 slim image as the base image
-FROM python:3.11-slim
+# Stage 1: Build TensorFlow
+FROM python:3.11-slim AS build-stage
 
-# Install wget and curl in a single RUN command to reduce layers
+# Install necessary build tools and dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
+    git \
+    bazel \
+    build-essential \
+    libopenblas-dev \
+    liblapack-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Create directories for saving files and logs in a single RUN command
-RUN mkdir -p /app/saved_models \
-    /app/weights_path \
-    /app/log_path_file \
-    /app/evaluation_results \
-    /app/federated_send_results \
-    /app/data_generation_path \
-    /app/json_weights \
-    /app/federated_received_results
+# Clone TensorFlow repository
+RUN git clone https://github.com/tensorflow/tensorflow.git
+
+# Change into TensorFlow directory
+WORKDIR /tensorflow
+
+# Configure TensorFlow build without AVX
+RUN ./configure
+
+# Build TensorFlow without AVX optimizations
+RUN bazel build --config=opt --copt=-mno-avx --copt=-mno-avx2 //tensorflow/tools/pip_package:build_pip_package
+
+# Create a pip package
+RUN bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+
+# Stage 2: Runtime Environment
+FROM python:3.11-slim
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Create an empty CSV file and add headers in a single RUN command
-RUN echo "timestamp,cpu,mem,network_receive,network_transmit,load" > /app/data_generation_path/data.csv
+# Copy the pre-built TensorFlow package from the build stage
+COPY --from=build-stage /tmp/tensorflow_pkg/tensorflow-*.whl /tmp/
 
-# Copy requirements.txt into the container
+# Install TensorFlow from the package
+RUN pip install --no-cache-dir /tmp/tensorflow-*.whl
+
+# Install other dependencies
 COPY requirements.txt /app/
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all Python scripts and other necessary files into the container in a single COPY command
+# Copy all Python scripts and other necessary files into the container
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
     elasticweightconsolidation.py evaluation_metrics.py /app/
-
 
 # Set the entry point to the shell script
 CMD ["python", "main.py"]

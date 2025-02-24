@@ -253,7 +253,7 @@ def get_network_receive_rate(node_ip):
             value = result["data"]["result"][0]["value"][1]
             return float(value)
         else:
-            print(f"No data returned for node {node_ip}", flush=True)
+            #print(f"No data returned for node {node_ip}", flush=True)
             return 0
     else:
         print(f"Failed to query Prometheus: {response.status_code}", flush=True)
@@ -275,7 +275,7 @@ def get_network_transmit_rate(node_ip):
             value = result["data"]["result"][0]["value"][1]
             return float(value)
         else:
-            print(f"No data returned for node {node_ip}", flush=True)
+            #print(f"No data returned for node {node_ip}", flush=True)
             return 0
     else:
         print(f"Failed to query Prometheus: {response.status_code}", flush=True)
@@ -302,7 +302,7 @@ def get_node_load_average(node_ip):
             load_average = float(data["data"]["result"][0]["value"][1])  # The second value is the load average
             return load_average
         else:
-            print(f"No data returned for node {node_ip}.")
+            #print(f"No data returned for node {node_ip}.")
             return 0
     else:
         print(f"Failed to fetch data from Prometheus. HTTP Status Code: {response.status_code}")
