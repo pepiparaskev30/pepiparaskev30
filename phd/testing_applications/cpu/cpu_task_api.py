@@ -102,11 +102,13 @@ async def cpu_latency(data: RequestData):
     user_points = [(random.uniform(0, 100), random.uniform(0, 100)) for _ in range(data.num_users)]
     proximity_percentage = get_proximity_per_worker(list_with_workers, points_of_workers, user_points)
     node_ip = get_node_ip_from_name(NODE_NAME)
+    print(node_ip,flush=True)
     current_load = get_node_load_average(node_ip)
+    print(current_load, flush=True)
 
     latency_ms = calculate_latency_cpu(data.num_users, proximity_percentage, current_load)
     
-    time.sleep(latency_ms / 1000)
+    #time.sleep(latency_ms / 1000)
     
     return {
         'message': f'Latency applied: {latency_ms} ms',
