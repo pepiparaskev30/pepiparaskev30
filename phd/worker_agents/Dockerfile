@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     libopenblas-dev \
     liblapack-dev \
+    zlib1g-dev \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bazel manually
