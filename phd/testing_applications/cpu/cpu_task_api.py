@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-import time
+import time, os
 import random
 import math
 import requests
@@ -8,6 +8,10 @@ from kubernetes import client, config
 import urllib.parse
 
 app = FastAPI()
+
+
+PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
+NODE_NAME = os.getenv("NODE_NAME")
 
 # List of workers and their points
 list_with_workers = ["worker_1", "worker_2", "worker_3"]
@@ -91,6 +95,7 @@ def calculate_latency_cpu(num_users, proximity_percentage, current_load):
 # API endpoint to handle POST requests for CPU-intensive tasks
 @app.post("/api/cpu_latency")
 async def cpu_latency(data: RequestData):
+    print(data.num_users)
     if data.num_users < 10 or data.num_users > 50:
         raise HTTPException(status_code=400, detail="num_users must be an integer between 10 and 50")
     
