@@ -25,7 +25,7 @@ RUN git clone https://github.com/tensorflow/tensorflow.git
 # Change into TensorFlow directory
 WORKDIR /tensorflow
 
-# Configure TensorFlow build without AVX and interactive prompts
+# Set environment variables to configure TensorFlow build
 ENV TF_NEED_CLANG=0
 ENV TF_NEED_CUDA=0
 ENV TF_NEED_ROCM=0
@@ -47,7 +47,8 @@ ENV TF_NEED_AWS=0
 ENV TF_NEED_NCLI=0
 ENV TF_NEED_OPENSSL=1
 
-RUN ./configure --is_component_build=false --is_debug=false --is_monolithic=false --is_static=false --c_opt_flags=-mno-avx --cxx_opt_flags=-mno-avx --cpu_optimizations=generic --host_optimizations=generic --host_c_opt_flags=-mno-avx --host_cxx_opt_flags=-mno-avx
+# Configure TensorFlow build without AVX optimizations
+RUN ./configure
 
 # Build TensorFlow without AVX optimizations
 RUN bazel build --config=opt --copt=-mno-avx --copt=-mno-avx2 //tensorflow/tools/pip_package:build_pip_package
