@@ -12,15 +12,13 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     unzip \
     clang \
+    patch \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bazel manually (Corrected URL)
+# Install Bazel manually
 RUN wget https://github.com/bazelbuild/bazel/releases/download/6.5.0/bazel-6.5.0-linux-x86_64
 RUN chmod +x bazel-6.5.0-linux-x86_64
 RUN mv bazel-6.5.0-linux-x86_64 /usr/local/bin/bazel
-
-# Verify Bazel installation
-RUN bazel --version
 
 # Clone TensorFlow repository
 RUN git clone https://github.com/tensorflow/tensorflow.git
@@ -54,10 +52,13 @@ ENV TF_NEED_OPENSSL=1
 RUN ./configure
 
 # Build TensorFlow without AVX optimizations
-RUN bazel build --config=opt --copt=-mno-avx --copt=-mno-avx2 //tensorflow/tools/pip_package:build_pip_package
+RUN bazel build --config=opt --copt=-mno-avx --copt=-mno-avx2 //tensorflow:libtensorflow.so
 
-# Create a pip package
-RUN bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
+# Create a pip package manually
+RUN python setup.py bdist_wheel
+
+# Copy the pre-built TensorFlow package
+RUN cp /tensorflow/*.whl /tmp/
 
 # Stage 2: Runtime Environment
 FROM python:3.11-slim
@@ -66,10 +67,10 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Copy the pre-built TensorFlow package from the build stage
-COPY --from=build-stage /tmp/tensorflow_pkg/tensorflow-*.whl /tmp/
+COPY --from=build-stage /tmp/*.whl /tmp/
 
 # Install TensorFlow from the package
-RUN pip install --no-cache-dir /tmp/tensorflow-*.whl
+RUN pip install --no-cache-dir /tmp/*.whl
 
 # Install other dependencies
 COPY requirements.txt /app/
