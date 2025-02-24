@@ -3,6 +3,7 @@ kind: Ingress
 metadata:
   name: cpu-app-ingress
 spec:
+  ingressClassName: nginx
   rules:
   - host: example.com
     http:
