@@ -12,7 +12,7 @@ spec:
       labels:
         app: cpu-app
     spec:
-      serviceAccountName: cpu-app-sa  # Specify the ServiceAccount name here
+      serviceAccountName: cpu-app-sa
       containers:
       - name: cpu-app-container
         image: docker.io/pepi1989/cpu-app:v3
@@ -39,4 +39,3 @@ spec:
                 operator: In
                 values:
                 - key-1
-
