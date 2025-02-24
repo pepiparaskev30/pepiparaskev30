@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-app-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpu-app
+  template:
+    metadata:
+      labels:
+        app: cpu-app
+    spec:
+      serviceAccountName: cpu-app-sa  # Specify the ServiceAccount name here
+      containers:
+      - name: cpu-app-container
+        image: docker.io/pepi1989/cpu-app:v1
+        resources:
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        ports:
+        - containerPort: 8003
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: PROMETHEUS_URL
+          value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 50
+            preference:
+              matchExpressions:
+              - key: label-1
+                operator: In
+                values:
+                - key-1
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: label-2
+                operator: In
+                values:
+                - key-2
+          - weight: 30
+            preference:
+              matchExpressions:
+              - key: label-3
+                operator: In
+                values:
+                - key-2

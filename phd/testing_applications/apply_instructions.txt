@@ -1,0 +1,17 @@
+kubectl apply -f cpu-app-deployment.yaml
+kubectl apply -f mem-app-deployment.yaml
+kubectl apply -f network-app-deployment.yaml
+kubectl apply -f cpu-app-service.yaml
+kubectl apply -f mem-app-service.yaml
+kubectl apply -f network-app-service.yaml
+kubectl apply -f ingress.yaml
+
+
+
+kubectl delete -f cpu-app-deployment.yaml
+kubectl delete -f mem-app-deployment.yaml
+kubectl delete -f network-app-deployment.yaml
+kubectl delete -f cpu-app-service.yaml
+kubectl delete -f mem-app-service.yaml
+kubectl delete -f network-app-service.yaml
+kubectl delete -f ingress.yaml
