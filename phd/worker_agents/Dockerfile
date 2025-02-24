@@ -15,9 +15,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Bazel manually
-RUN wget https://github.com/bazelbuild/bazel/releases/download/6.0.0/bazel_6.0.0-linux-x86_64.deb
-RUN dpkg -i bazel_6.0.0-linux-x86_64.deb
-RUN rm bazel_6.0.0-linux-x86_64.deb
+RUN wget https://github.com/bazelbuild/bazel/releases/download/6.5.0/bazel-6.5.0-linux-x86_64.deb
+RUN dpkg -i bazel-6.5.0-linux-x86_64.deb
+RUN rm bazel-6.5.0-linux-x86_64.deb
 
 # Clone TensorFlow repository
 RUN git clone https://github.com/tensorflow/tensorflow.git
