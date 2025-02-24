@@ -1,6 +1,13 @@
-docker build -t pepi1989/cpu-app:v3 . && docker push pepi1989/cpu-app:v3
+docker build -t pepi1989/cpu-app:v4 . && docker push pepi1989/cpu-app:v4
 
 
-kubectl apply -f cpu-app-deployment.yaml
-kubectl apply -f cpu-app-service.yaml
-kubectl apply -f rbac.yaml 
+kubectl apply -f cpu/cpu-app-deployment.yaml
+kubectl apply -f cpu/cpu-app-service.yaml
+kubectl apply -f cpu/rbac.yaml 
+kubectl apply -f ingress.yaml
+
+
+kubectl delete -f cpu/cpu-app-deployment.yaml
+kubectl delete -f cpu/cpu-app-service.yaml
+kubectl delete -f cpu/rbac.yaml 
+kubectl delete -f ingress.yaml
