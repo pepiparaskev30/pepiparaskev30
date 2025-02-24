@@ -21,7 +21,7 @@ spec:
             memory: "256Mi"
             cpu: "500m"
         ports:
-        - containerPort: 8003
+        - containerPort: 8002
         env:
         - name: NODE_NAME
           valueFrom:
