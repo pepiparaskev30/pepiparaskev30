@@ -3,12 +3,14 @@ kind: Ingress
 metadata:
   name: fastapi-ingress
 spec:
-  http:
-  - paths:
-    - path: /api/cpu_latency
-      pathType: Prefix
-      backend:
-        service:
-          name: fastapi-service
-          port:
-            number: 80
+  rules:
+  - host: example.com
+    http:
+      paths:
+      - path: /api/cpu_latency
+        pathType: Prefix
+        backend:
+          service:
+            name: fastapi-service
+            port:
+              number: 80
