@@ -17,4 +17,4 @@ COPY cpu_task_api.py .
 EXPOSE 8003
 
 # Run command when container starts
-CMD ["python", "cpu-app-deployment.py"]
+CMD ["python", "cpu_task_api.py"]

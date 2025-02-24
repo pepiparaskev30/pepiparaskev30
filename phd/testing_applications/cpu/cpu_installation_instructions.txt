@@ -1,0 +1,1 @@
+docker build -t pepi1989/cpu-app:v2 && docker push pepi1989/cpu-app:v2
