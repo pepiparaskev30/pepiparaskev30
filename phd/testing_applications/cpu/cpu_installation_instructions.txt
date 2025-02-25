@@ -1,4 +1,4 @@
-docker build -t pepi1989/cpu-app:v5 . && docker push pepi1989/cpu-app:v5
+docker build -t pepi1989/cpu-app:v6 . && docker push pepi1989/cpu-app:v6
 
 
 kubectl apply -f cpu/cpu-app-deployment.yaml
