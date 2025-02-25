@@ -15,7 +15,7 @@ spec:
       serviceAccountName: cpu-app-sa
       containers:
       - name: cpu-app-container
-        image: docker.io/pepi1989/cpu-app:v6
+        image: docker.io/pepi1989/cpu-app:v7
         resources:
           limits:
             memory: "256Mi"

@@ -1,4 +1,4 @@
-docker build -t pepi1989/cpu-app:v6 . && docker push pepi1989/cpu-app:v6
+docker build -t pepi1989/cpu-app:v7 . && docker push pepi1989/cpu-app:v7
 
 
 kubectl apply -f cpu/cpu-app-deployment.yaml
@@ -11,3 +11,10 @@ kubectl delete -f cpu/cpu-app-deployment.yaml
 kubectl delete -f cpu/cpu-app-service.yaml
 kubectl delete -f cpu/rbac.yaml 
 kubectl delete -f ingress.yaml
+
+minikube addons enable ingress
+minikube tunnel
+kubectl get ingress
+minikube ip
+# set to /etc/hosts
+192.168.67.2 (ip of the control-plane/minikube) example.com

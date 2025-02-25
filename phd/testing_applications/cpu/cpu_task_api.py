@@ -42,6 +42,30 @@ def query_metric(prometheus_url, promql_query):
         print(f"Request failed: {e}", flush=True)
     return []
 
+def get_node_cpu_usage(node_ip):
+    # Calculate CPU usage
+    query = f'100 - (100 * avg by (instance) (rate(node_cpu_seconds_total{{instance="{node_ip}:9100", mode="idle"}}[1m])))'
+    url = f'{PROMETHEUS_URL}/api/v1/query'
+    response = requests.get(url, params={'query': query})
+    if response.status_code == 200:
+        data = response.json()
+        if data["status"] == "success" and data["data"]["result"]:
+            cpu_usage = float(data["data"]["result"][0]["value"][1])
+            return cpu_usage
+        else:
+            return 0
+    else:
+        print(f"Failed to fetch data from Prometheus. HTTP Status Code: {response.status_code}")
+        return 0
+
+def get_node_available_cpu(node_ip):
+    cpu_usage = get_node_cpu_usage(node_ip)
+    if cpu_usage is not None:
+        available_cpu = 100 - cpu_usage
+        return available_cpu
+    else:
+        return 0
+
 def get_node_load_average(node_ip):
     query = f'node_load1{{instance="{node_ip}:9100"}}'
     url = f'{PROMETHEUS_URL}/api/v1/query'
@@ -86,11 +110,11 @@ def get_proximity_per_worker(list_with_workers, points_of_workers, user_points):
 # Function to calculate latency for CPU-intensive tasks
 def calculate_latency_cpu(num_users, proximity_percentage, current_load):
     max_capacity = 100
-    cpu_factor = 1.5
+    cpu_factor = get_node_available_cpu(get_node_ip_from_name(NODE_NAME))
     adjusted_load = min(current_load, max_capacity)
     latency = ((adjusted_load + num_users) / max_capacity) * (1 - (proximity_percentage[0][1]/100)) * cpu_factor
     latency_ms = latency * 1000
-    return latency_ms
+    return latency_ms, cpu_factor
 
 # API endpoint to handle POST requests for CPU-intensive tasks
 @app.post("/api/cpu_latency")
@@ -106,7 +130,7 @@ async def cpu_latency(data: RequestData):
     current_load = get_node_load_average(node_ip)
     print(current_load, flush=True)
 
-    latency_ms = calculate_latency_cpu(data.num_users, proximity_percentage, current_load)
+    latency_ms, cpu_factor = calculate_latency_cpu(data.num_users, proximity_percentage, current_load)
     
     #time.sleep(latency_ms / 1000)
     
@@ -114,7 +138,8 @@ async def cpu_latency(data: RequestData):
         'message': f'Latency applied: {latency_ms} ms',
         'num_users': data.num_users,
         'proximity_percentage': proximity_percentage,
-        'current_load': current_load
+        'current_load': current_load, 
+        "available_node_cpu":cpu_factor 
     }
 
 if __name__ == '__main__':
