@@ -14,8 +14,8 @@ PROMETHEUS_URL = os.getenv("PROMETHEUS_URL")
 NODE_NAME = os.getenv("NODE_NAME")
 
 # List of workers and their points
-list_with_workers = ["worker_1", "worker_2", "worker_3"]
-points_of_workers = [(10, 30), (50, 50), (60, 70)]
+list_with_workers = [NODE_NAME]
+points_of_workers = [(10, 30)]
 
 # Define the distance threshold
 threshold = 20  # You can adjust this value
@@ -88,7 +88,7 @@ def calculate_latency_cpu(num_users, proximity_percentage, current_load):
     max_capacity = 100
     cpu_factor = 1.5
     adjusted_load = min(current_load, max_capacity)
-    latency = ((adjusted_load + num_users) / max_capacity) * (1 - proximity_percentage[0][1]) * cpu_factor
+    latency = ((adjusted_load + num_users) / max_capacity) * (1 - (proximity_percentage[0][1]/100)) * cpu_factor
     latency_ms = latency * 1000
     return latency_ms
 
