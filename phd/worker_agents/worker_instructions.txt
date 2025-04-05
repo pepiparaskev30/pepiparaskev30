@@ -1,0 +1,15 @@
+kubectl apply -f rbac.yaml
+kubectl apply -f DaemonSet.yaml
+
+
+kubectl delete -f rbac.yaml
+kubectl delete -f DaemonSet.yaml
+
+
+kubectl apply -f agent_deployment.yaml
+kubectl apply -f agent_role_role_binding.yaml
+
+
+kubectl delete -f agent_deployment.yaml
+kubectl delete -f agent_role_role_binding.yaml
+
