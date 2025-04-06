@@ -687,78 +687,88 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
                     print("Initial training completed", flush=True)
 
-            elif iterator>=1:
-                print("Incremental procedure started", flush=True)
-                updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
+            elif iterator >= 1:
+                print("🌀 Incremental procedure started", flush=True)
+                updated_df, causality_cpu, causalilty_ram = preprocess_time_series_data(df)
                 incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+
                 for target_resource in targets:
-                    iterator_, target_resource, predictions_= incremental_training(incremental_training_,target_resource, iterator)
-                    if i%2==0:
-                        print(f"========== predictions for {target_resource} ==========")
+                    iterator_, target_resource, predictions_ = incremental_training(incremental_training_, target_resource, iterator)
+
+                    if i % 2 == 0:
+                        print(f"🧠 Predictions for {target_resource}", flush=True)
                         predictions_final_ = predictions_.tolist()
+
+                        # Limit predictions history size to prevent memory bloat
+                        MAX_HISTORY = 20
                         for element in predictions_final_:
                             trained_model_predictions.append(element[0])
+                            if len(trained_model_predictions) > MAX_HISTORY:
+                                trained_model_predictions.pop(0)
+
+                        # Analyze trend
                         result = analyze_rate_of_change(calculate_rate_of_change(trained_model_predictions))
-                        print(result)
-                        time.sleep(10)
-                        if result in (0,1):
-                            pass
-                        else: 
-                            print("trigger re-adaptation")
-                            time.sleep(1000)
+                        print(f"[INFO] Rate of change analysis result: {result}", flush=True)
 
+                        # Decision based on trend
+                        time.sleep(2)
+                        if result in (0, 1):
+                            print("[INFO] No re-adaptation triggered. Normal trend or stable.", flush=True)
+                        else:
+                            print("⚠️ [TRIGGER] Re-adaptation condition met!", flush=True)
+                            # Replace sleep with a function call if re-training logic is needed
+                            time.sleep(10)  # Make this short for now, replace with retraining logic
 
+                        predictions_final_ = []
+                        print("[INFO] Post-prediction pause done. Continuing...", flush=True)
+                        time.sleep(2)
 
-                        predictions_final_=[]
-
-
-                        time.sleep(10)
+                    # === Check for convergence after prediction step ===
                     metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
                     most_frequent_value = count_frequency(metrics_convergence)
-                    if len(most_frequent_value) == 1:
-                        if most_frequent_value[0] == 1:
-                            pass
-                        else:
-                            print("Welcome to Federated Learning!!", flush=True)
-                            time.sleep(1)
-                            federated_learning_send(target_resource)
-                            print("wait now!!!", flush=True)
-                            time.sleep(10)
-                            while True:
-                                federated_weights = federated_receive(target_resource)
-                                
-                                if federated_weights != None:
-                                    print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have been received")
-                                    time.sleep(2)
-                                    break
-                                else:
-                                    print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have not been received yet")
-                                    time.sleep(2)
-                            write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", federated_weights)     
 
-                            
-                    else:
-                        print("Welcome to \n Federated Learning!!")
+                    if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
+                        print("🚀 Welcome to Federated Learning!!", flush=True)
                         time.sleep(1)
                         federated_learning_send(target_resource)
-                        print("wait now!!!", flush=True)
-                        time.sleep(10) 
-                        federated_receive(target_resource)
+                        print("⏳ Waiting for global model aggregation...", flush=True)
+                        time.sleep(5)
+
                         while True:
-                            federated_weights = federated_receive(FEDERATION_URL_RECEIVE)
-                            if federated_weights != None:
-                                print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have been received")
+                            federated_weights = federated_receive(target_resource)
+                            if federated_weights:
+                                print(f"[✅ INFO] Aggregated weights received for {target_resource}", flush=True)
                                 time.sleep(2)
                                 break
                             else:
-                                print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have not been received yet")
+                                print(f"[INFO] Awaiting weights for {target_resource}...", flush=True)
                                 time.sleep(2)
-                        
-                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)     
 
-            iterator+=1        
-        i = 0
-        time.sleep(4)
+                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", federated_weights)
+
+                    else:
+                        print("📡 Triggering federated communication (fallback path)", flush=True)
+                        time.sleep(1)
+                        federated_learning_send(target_resource)
+                        print("⏳ Waiting for aggregation response...", flush=True)
+                        time.sleep(5)
+
+                        while True:
+                            federated_weights = federated_receive(target_resource)
+                            if federated_weights:
+                                print(f"[✅ INFO] Aggregated weights received (fallback) for {target_resource}", flush=True)
+                                time.sleep(2)
+                                break
+                            else:
+                                print(f"[INFO] Still waiting for aggregated weights...", flush=True)
+                                time.sleep(2)
+
+                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)
+
+                iterator += 1
+                i = 0
+                time.sleep(3)
+
 
 
         clear_csv_content(path_to_data_file)
