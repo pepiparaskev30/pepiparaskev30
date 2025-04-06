@@ -70,7 +70,11 @@ from sklearn.impute import SimpleImputer
 from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
+from kubernetes.client.rest import ApiException
+import urllib3
 
+# Suppress only the specific SSL warning (safe in dev/local envs)
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ############  START logging properties #################
 #ignore information messages from terminal
@@ -156,14 +160,24 @@ class Gatherer:
         threading.Thread(target=Gatherer.flush_data).start()
         return
 
-# Function to retrieve the internal IP of a node by its name
+
 def get_node_ip_from_name(node_name):
-    config.load_incluster_config()  # Load cluster config
-    v1 = client.CoreV1Api()
-    node = v1.read_node(name=node_name)
-    for address in node.status.addresses:
-        if address.type == "InternalIP":
-            return address.address
+    try:
+        config.load_incluster_config()  # Use in-cluster config (for Pods in k8s)
+        configuration = client.Configuration()
+        configuration.verify_ssl = False  # 🚨 Disable SSL verification (only for dev)
+        client.Configuration.set_default(configuration)
+
+        v1 = client.CoreV1Api()
+        node = v1.read_node(name=node_name)
+        for address in node.status.addresses:
+            if address.type == "InternalIP":
+                return address.address
+        print(f"[WARN] No InternalIP found for node: {node_name}", flush=True)
+    except ApiException as e:
+        print(f"[ERROR] Kubernetes API exception: {e}", flush=True)
+    except Exception as e:
+        print(f"[ERROR] Unexpected error fetching node IP: {e}", flush=True)
     return None
 
 
@@ -456,7 +470,6 @@ def load_keras_model(model_path, custom_objects=None):
 
 def init_training_based_on_resource(init_training_, target_resource, early_stopping):
     print(f"[INFO]: Initial Training model for {target_resource}")
-    time.sleep(2)
     logging.info(f"Start  the pre-training phase for target {target_resource}")
     training_df = init_training_.df_reformulation(target_metric=target_resource)
     train_x, train_y, validation_x, validation_y = init_training_.train_test_split_(training_df, sequence_length=sequence_length)
@@ -551,7 +564,7 @@ def federated_learning_send(target_resource):
             print(f"[ERROR] Exception occurred: {e}", flush=True)
 
         retries += 1
-        time.sleep(2)
+
 
     if retries == max_retries:
         print("[ERROR] Failed to send weights after multiple retries.", flush=True)
@@ -670,26 +683,29 @@ def clear_csv_content(csv_file):
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
 
-def preprocessing(data_flush_list,path_to_data_file, iterator=0):
+def preprocessing(data_flush_list, path_to_data_file, iterator=0):
     print(data_flush_list, flush=True)
-    data_formulation(data_flush_list,path_to_data_file)
+    data_formulation(data_flush_list, path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
-    if row_count>=15:
+
+    if row_count >= 15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
-        for i in range(0,3):
-            if  iterator == 0:
-                updated_df, causality_cpu, causalilty_ram=preprocess_time_series_data(df)
-                features_cpu, features_ram =find_resource_features(causality_cpu, causalilty_ram, updated_df)
-                features_cpu =['mem', "network_receive", "network_transmit", "load"]
-                features_ram = ['cpu',"network_receive", "network_transmit", "load"]
+
+        for i in range(0, 3):
+            if iterator == 0:
+                updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
+                features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
+                features_cpu = ['mem', "network_receive", "network_transmit", "load"]
+                features_ram = ['cpu', "network_receive", "network_transmit", "load"]
                 init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
+
                 for target_resource in targets:
                     init_training_based_on_resource(init_training_, target_resource, early_stopping)
                     print("Initial training completed", flush=True)
 
             elif iterator >= 1:
                 print("🌀 Incremental procedure started", flush=True)
-                updated_df, causality_cpu, causalilty_ram = preprocess_time_series_data(df)
+                updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
                 incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
 
                 for target_resource in targets:
@@ -699,34 +715,29 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                         print(f"🧠 Predictions for {target_resource}", flush=True)
                         predictions_final_ = predictions_.tolist()
 
-                        # Limit predictions history size to prevent memory bloat
                         MAX_HISTORY = 20
                         for element in predictions_final_:
                             trained_model_predictions.append(element[0])
                             if len(trained_model_predictions) > MAX_HISTORY:
                                 trained_model_predictions.pop(0)
 
-                        # Analyze trend
                         result = analyze_rate_of_change(calculate_rate_of_change(trained_model_predictions))
                         print(f"[INFO] Rate of change analysis result: {result}", flush=True)
 
-                        # Decision based on trend
-                        time.sleep(2)
                         if result in (0, 1):
                             print("[INFO] No re-adaptation triggered. Normal trend or stable.", flush=True)
                         else:
                             print("⚠️ [TRIGGER] Re-adaptation condition met!", flush=True)
-                            # Replace sleep with a function call if re-training logic is needed
-                            time.sleep(10)  # Make this short for now, replace with retraining logic
+                            time.sleep(10)
 
                         predictions_final_ = []
                         print("[INFO] Post-prediction pause done. Continuing...", flush=True)
                         time.sleep(2)
 
-                    # === Check for convergence after prediction step ===
                     metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
                     most_frequent_value = count_frequency(metrics_convergence)
 
+                    # === FDL Trigger ===
                     if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
                         print("🚀 Welcome to Federated Learning!!", flush=True)
                         time.sleep(1)
@@ -765,18 +776,35 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
 
                         write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)
 
+                    # === FDL Evaluation ===
+                    print(f"[INFO] ✅ Evaluating Federated Model for {target_resource}", flush=True)
+                    validation_df = incremental_training_.df_reformulation(target_resource)
+                    _, _, validation_x, validation_y = incremental_training_.train_test_split_(validation_df, sequence_length)
+
+                    fed_model = load_keras_model(
+                        SAVED_MODELS_PATH + "/" + f"model_{target_resource}.keras",
+                        custom_objects={'Attention': Attention}
+                    )
+                    fed_model = update_model_with_federated_weights(fed_model, target_resource)
+                    preds = fed_model.predict(validation_x)
+
+                    mse = calculate_mse(preds, validation_y)
+                    rmse = calculate_rmse(mse)
+                    r2 = calculate_r2_score(validation_y, preds)
+
+                    append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
+                    print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
+
                 iterator += 1
                 i = 0
                 time.sleep(3)
 
-
-
         clear_csv_content(path_to_data_file)
-        print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing started", flush=True)
+        print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
         print(df, flush=True)
-        
     else:
-        print(f"[INFO]: {datetime.utcfromtimestamp(time.time()).strftime('%Y-%m-%d %H:%M:%S')} more lines needed for data preprocessing", flush=True)
+        print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} More data needed for preprocessing", flush=True)
+
 
 def create_empty_json_file(filepath):
     """
