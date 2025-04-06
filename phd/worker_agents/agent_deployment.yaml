@@ -20,7 +20,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v208  # Replace this with your correct image
+          image: pepi1989/client_pod:v209  # Replace this with your correct image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
@@ -38,6 +38,6 @@ spec:
             - name: PROMETHEUS_URL
               value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
             - name: FEDERATION_URL_SEND
-              value: "http://fed-master-service:8002/upload_weights_fdl_master"
+              value: "http://fed-master-service:8002/upload_weights"
             - name: FEDERATION_URL_RECEIVE
-              value: "http://receive-fed-weights-service:8001/get_aggregated_json_weights"
+              value: "http://fed-master-service:8002//global_model/" 
