@@ -40,4 +40,4 @@ spec:
             - name: FEDERATION_URL_SEND
               value: "http://fed-master-service:8002/upload_weights"
             - name: FEDERATION_URL_RECEIVE
-              value: "http://fed-master-service:8002/global_model/" 
+              value: "http://fed-master-service:8002/global_model" 

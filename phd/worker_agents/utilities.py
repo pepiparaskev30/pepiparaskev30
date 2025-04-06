@@ -902,11 +902,16 @@ def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
 
 def save_weights_to_json(weights_list: list, json_file_path: str):
     """
-    Save the weights of a Keras model to a JSON file.
+    Save the weights of a Keras model to a JSON file using layer names.
     """
+    weights_dict = {}
+    for idx, weight_array in enumerate(weights_list):
+        weights_dict[f"weight_{idx}"] = weight_array  # simple naming
+
     with open(json_file_path, 'w') as f:
-        json.dump(weights_list, f, indent=4)
+        json.dump(weights_dict, f, indent=4)
     print(f"[INFO] Saved weights to {json_file_path}")
+
 
 
 def file_contains_word(path_, word):
