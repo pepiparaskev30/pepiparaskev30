@@ -668,8 +668,8 @@ def clear_csv_content(csv_file):
         writer.writerow(header)  # Write the header back to the file
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
-    
-def preprocessing(data_flush_list, path_to_data_file, iterator=0):
+  
+def preprocessing(data_flush_list, path_to_data_file, iterator):
     print(data_flush_list, flush=True)
     data_formulation(data_flush_list, path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
@@ -677,23 +677,27 @@ def preprocessing(data_flush_list, path_to_data_file, iterator=0):
     if row_count >= 15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
 
-        for i in range(0, 3):
-            if iterator == 0:
-                updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
-                features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
-                features_cpu = ['mem', "network_receive", "network_transmit", "load"]
-                features_ram = ['cpu', "network_receive", "network_transmit", "load"]
-                init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
+        if iterator == 0:
+            # === INITIAL TRAINING ONLY ONCE ===
+            updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
+            features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
+            features_cpu = ['mem', "network_receive", "network_transmit", "load"]
+            features_ram = ['cpu', "network_receive", "network_transmit", "load"]
+            init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
 
-                for target_resource in targets:
-                    init_training_based_on_resource(init_training_, target_resource, early_stopping)
-                    print("Initial training completed", flush=True)
+            for target_resource in targets:
+                init_training_based_on_resource(init_training_, target_resource, early_stopping)
+                print("Initial training completed", flush=True)
 
-            elif iterator >= 1:
-                print("🌀 Incremental procedure started", flush=True)
-                updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
-                incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+            iterator += 1  # <--- CRITICAL FIX
+            print(f"[DEBUG] Initial training done. Moving to iterator = {iterator}", flush=True)
 
+        else:
+            print("🌀 Incremental procedure started", flush=True)
+            updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
+            incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+
+            for i in range(0, 3):  # now the loop is only inside incremental logic
                 for target_resource in targets:
                     iterator_, target_resource, predictions_ = incremental_training(incremental_training_, target_resource, iterator)
 
@@ -723,7 +727,6 @@ def preprocessing(data_flush_list, path_to_data_file, iterator=0):
                     metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
                     most_frequent_value = count_frequency(metrics_convergence)
 
-                    # === FDL Trigger ===
                     if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
                         print("🚀 Welcome to Federated Learning!!", flush=True)
                         time.sleep(1)
@@ -762,7 +765,6 @@ def preprocessing(data_flush_list, path_to_data_file, iterator=0):
 
                         write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)
 
-                    # === FDL Evaluation ===
                     print(f"[INFO] ✅ Evaluating Federated Model for {target_resource}", flush=True)
                     validation_df = incremental_training_.df_reformulation(target_resource)
                     _, _, validation_x, validation_y = incremental_training_.train_test_split_(validation_df, sequence_length)
@@ -781,15 +783,16 @@ def preprocessing(data_flush_list, path_to_data_file, iterator=0):
                     append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
                     print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
 
-                iterator += 1
-                i = 0
                 time.sleep(3)
 
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
         print(df, flush=True)
+
     else:
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} More data needed for preprocessing", flush=True)
+
+    return iterator  # <--- you MUST return this if called in a loop outside
 
 
 def create_empty_json_file(filepath):
