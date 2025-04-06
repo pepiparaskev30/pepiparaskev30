@@ -456,6 +456,7 @@ def load_keras_model(model_path, custom_objects=None):
 
 
 def init_training_based_on_resource(init_training_, target_resource, early_stopping):
+    print()
     print(f"[INFO]: Initial Training model for {target_resource}")
     logging.info(f"Start  the pre-training phase for target {target_resource}")
     training_df = init_training_.df_reformulation(target_metric=target_resource)
@@ -465,6 +466,7 @@ def init_training_based_on_resource(init_training_, target_resource, early_stopp
     train_model(target_resource, model,train_x,train_y,validation_x, validation_y, num_epochs,early_stopping )
     path_to_model_file = SAVED_MODELS_PATH+"/"+f"model_{target_resource}.keras"
     model.save(path_to_model_file)
+    print()
     print("saved")
 
 def train_model(target_resource,simple_model, train_x, train_y,validation_x,validation_y, num_epochs,early_stopping):
@@ -731,8 +733,8 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                     most_frequent_value = count_frequency(metrics_convergence)
 
                     if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
+                        print()
                         print("🚀 Welcome to Federated Learning!!", flush=True)
-                        time.sleep(1)
                         federated_learning_send(target_resource)
                         print("⏳ Waiting for global model aggregation...", flush=True)
                         time.sleep(5)
@@ -740,19 +742,23 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                         while True:
                             federated_weights = federated_receive(target_resource)
                             if federated_weights:
+                                print()
                                 print(f"[✅ INFO] Aggregated weights received for {target_resource}", flush=True)
                                 time.sleep(2)
                                 break
                             else:
+                                print()
                                 print(f"[INFO] Awaiting weights for {target_resource}...", flush=True)
                                 time.sleep(2)
 
                         write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", federated_weights)
 
                     else:
+                        print()
                         print("📡 Triggering federated communication (fallback path)", flush=True)
                         time.sleep(1)
                         federated_learning_send(target_resource)
+                        print()
                         print("⏳ Waiting for aggregation response...", flush=True)
                         time.sleep(5)
 
@@ -838,6 +844,7 @@ def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame
     return features_cpu, features_ram
 
 def incremental_training(incremental_training_, target_resource, iterator):
+    print()
     print("============ INCREMENTAL PROCEDURE =======================", flush=True)
 
     # Load old model and obtain its weights
@@ -983,28 +990,40 @@ def delete_file(file_name):
     except Exception as e:
         print(f"An error occurred: {e}")
 
+import json
+
 def update_model_with_federated_weights(loaded_model, target_resource):
-    ### this is important code
-    # Load weights from JSON file
-    filename = f"{target_resource}_weights_{NODE_NAME}_aggregated.json"
-    filepath = os.path.join(FEDERATED_WEIGHTS_PATH_RECEIVE, filename)
+    file_path = f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json"
 
-    if not os.path.exists(filepath):
-        raise FileNotFoundError(f"[❌ ERROR] Federated weights file not found: {filepath}")
+    try:
+        with open(file_path, 'r') as json_file:
+            raw_data = json_file.read().strip()
 
-    with open(filepath, 'r') as json_file:
-        weights_data = json.load(json_file)
+            # Skip if empty
+            if not raw_data:
+                raise ValueError(f"[❌ ERROR] File '{file_path}' is empty")
 
-        weights_data = json.load(json_file)
-    # Iterate through layers in the model
+            # Try parsing
+            weights_data = json.loads(raw_data)
+
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"[❌ ERROR] Failed to load weights from {file_path}: {e}", flush=True)
+        print("[⚠️ DEBUG] Content was:", flush=True)
+        with open(file_path, 'r') as f:
+            print(f.read(), flush=True)
+        return loaded_model  # Optionally skip update or return model as-is
+
+    # Continue as before
     for layer in loaded_model.layers:
-        # Check if the layer has weights in your JSON
         if layer.name in weights_data:
-            # Load weights from JSON and set them to the layer
-            layer.set_weights([np.array(weights_data[layer.name][param]) for param in layer.trainable_weights])
-    
-    delete_file(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json")
+            try:
+                layer.set_weights([np.array(weights_data[layer.name][param]) for param in layer.trainable_weights])
+            except Exception as e:
+                print(f"[❌ ERROR] Could not set weights for {layer.name}: {e}")
+
+    delete_file(file_path)
     return loaded_model
+
 
 #custom made function to apply k-nn in missing-value ts columns
 def k_nearest_neighbors(df:pd.DataFrame, col_):
@@ -1176,6 +1195,7 @@ def preprocess_time_series_data(df:pd.DataFrame):
     Main function to perform all the pre-processing steps following a specific order
     '''
     pipeline = DataPipeline(df)
+    print()
     print("📥 Data inserted, pre-processing process is initialized", flush=True)
     print()  # This adds a newline
     print("🔍 Missing values detection and imputation", flush=True)
