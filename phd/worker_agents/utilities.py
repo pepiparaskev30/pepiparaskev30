@@ -995,7 +995,7 @@ def delete_file(file_name):
 import json
 
 def update_model_with_federated_weights(loaded_model, target_resource):
-    file_path = f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json"
+    file_path = f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json"
 
     try:
         with open(file_path, 'r') as json_file:
