@@ -731,7 +731,7 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                         federated_learning_send(target_resource)
                         print("wait now!!!", flush=True)
                         time.sleep(10) 
-                        federated_receive(FEDERATION_URL_RECEIVE)
+                        federated_receive(target_resource)
                         while True:
                             federated_weights = federated_receive(FEDERATION_URL_RECEIVE)
                             if federated_weights != None:
