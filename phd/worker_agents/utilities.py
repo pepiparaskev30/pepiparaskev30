@@ -793,7 +793,14 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                     print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
 
                 time.sleep(3)
+        append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
 
+        # ✅ New: Save to final_metrics JSON
+        metrics_dict = {"MSE": mse, "RMSE": rmse, "R2": r2}
+        save_final_metrics_json(metrics_dict, target_resource)
+
+        print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
+        print()
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
         print(df, flush=True)
@@ -802,6 +809,16 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} More data needed for preprocessing", flush=True)
 
     return iterator  # <--- you MUST return this if called in a loop outside
+
+
+def save_final_metrics_json(metrics_dict, target_resource):
+    output_path = f"./exposed_metrics/final_metrics_{target_resource}.json"
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, 'w') as json_file:
+        json.dump(metrics_dict, json_file, indent=4)
+
+    print(f"[📝] Final metrics saved to {output_path}", flush=True)
 
 
 def create_empty_json_file(filepath):

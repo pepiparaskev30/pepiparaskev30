@@ -1,7 +1,12 @@
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole # Role
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  namespace: default  # The namespace where FastAPI app operates
+  name: agent-sa
+  namespace: default
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
   name: agent-role
 rules:
   - apiGroups: [""]
@@ -14,22 +19,18 @@ rules:
     resources: ["deployments"]
     verbs: ["get", "list", "update", "patch"]
   - apiGroups: ["apps"]
-    resources: ["deployments/scale"]  # Allow patching scale resources
-    verbs: ["patch"]  # Specifically grant permission to patch deployments/scale
+    resources: ["deployments/scale"]
+    verbs: ["patch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding # RoleBinding
+kind: ClusterRoleBinding
 metadata:
   name: agent-rolebinding
-  namespace: default
 subjects:
 - kind: ServiceAccount
-  name: default  # Using the default service account
+  name: agent-sa  # ✅ Use the correct custom service account here
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: agent-role  # The Role we created above
+  name: agent-role
   apiGroup: rbac.authorization.k8s.io
-
-
-
