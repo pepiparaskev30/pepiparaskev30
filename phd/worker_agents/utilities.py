@@ -499,69 +499,69 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
 
     return simple_model
 
-def get_federation_url():
-    pass
 
-def federated_learning_send(target_resource, max_retries=100):
-    file_to_be_sent = FEDERATED_WEIGHTS_PATH_SEND_CLIENT + "/" + f"{target_resource}_weights_{NODE_NAME}.json"
-    create_empty_json_file(file_to_be_sent)
-    with open(file_to_be_sent, 'rb') as json_file:
-        files = {
-            'file': (f'{target_resource}_weights_{NODE_NAME}.json', json_file),
-            'target_name': (None, target_resource),
-            'node_name': (None, NODE_NAME)
-        }
+def federated_learning_send(target_resource):
+    file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
 
-        print("to be sent to the fd master node...", flush=True)
-        print(files, flush=True)
-        print("-----------------------")
-        time.sleep(10)
-        response = requests.post(FEDERATION_URL_SEND, files=files)
+    # Load the weights from the saved JSON file
+    with open(file_to_be_sent, 'r') as f:
+        weights_data = json.load(f)
 
-        retry_count = 0
-        while response.status_code != 200 and retry_count < max_retries:
-            time.sleep(1)
-            print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n - MESSAGE: Request is not completed. Retrying...", flush=True)
-            response = requests.post(FEDERATION_URL_SEND, files=files)
-            retry_count += 1
+    payload = {
+        "client_id": NODE_NAME,
+        "target_resource": target_resource,
+        "client_model": weights_data
+    }
 
-        if response.status_code != 200:
-            print("[ERROR]: Max retries reached. Request not completed.", flush=True)
-
-def federated_receive(url, target_resource, max_retries=100, retry_delay=2):
-    payload = {"file_type": target_resource}
-    print(payload)
-    time.sleep(10)
+    print(f"[INFO] Sending weights for '{target_resource}' to FedAsync server from client '{NODE_NAME}'", flush=True)
     retries = 0
+    max_retries = 5
+
     while retries < max_retries:
-        response = requests.post(url, json= payload)
+        try:
+            response = requests.post(FEDERATION_URL_SEND, json=payload)
+            if response.status_code == 200:
+                print("[SUCCESS] FedAsync update applied:", response.json(), flush=True)
+                break
+            else:
+                print(f"[ERROR] Server responded with status {response.status_code}, retrying...", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Exception occurred: {e}", flush=True)
 
-        if response.status_code == 200:
-            try:
-                # Try to parse the response as JSON
-                
-                json_body = response.json()
-                if json_body == None:
-                    print("[INFO]: weights not ready yet")
-                else:
-                    print("[INFO]: weights have been received")
-                #print("Received JSON body:", json_body)
-                return json_body  # Return the JSON body
-            except json.JSONDecodeError:
-                # Handle the case where the response is not valid JSON
-                print("Received non-JSON response. Retrying...")
-        else:
-            # Handle non-200 status codes
-            print(f"Request failed with status code {response.status_code}. Retrying...")
-
-        # Increment the retry count
         retries += 1
+        time.sleep(2)
 
-        # Introduce a delay before making the next request
+    if retries == max_retries:
+        print("[ERROR] Failed to send weights after multiple retries.", flush=True)
+
+def federated_receive(target_resource, max_retries=5, retry_delay=2):
+    url = f"{FEDERATION_URL_RECEIVE}/{target_resource}"
+    retries = 0
+
+    while retries < max_retries:
+        try:
+            response = requests.get(url)
+            if response.status_code == 200:
+                data = response.json()
+                model_data = data.get("model", {})
+
+                if model_data:
+                    print(f"🟢 [INFO] Aggregated weights for '{target_resource}' received (server_round: {data['server_round']})", flush=True)
+                    print("🟢 [INFO] Aggregated weights have been updated!")
+                    return model_data
+                else:
+                    print(f"[INFO] Model for '{target_resource}' is empty. Waiting...", flush=True)
+            else:
+                print(f"[WARN] Server responded with status {response.status_code}. Retrying...", flush=True)
+        except Exception as e:
+            print(f"[ERROR] Failed to fetch model: {e}", flush=True)
+
+        retries += 1
         time.sleep(retry_delay)
 
-    print(f"Maximum retries ({max_retries}) reached. No valid JSON response received.")
+    print("[ERROR] Max retries reached. No model received.")
     return None
+
 
 def write_json_body(file_path, json_data):
     # Write the JSON object to the file

@@ -20,30 +20,9 @@ spec:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
-      volumes:
-        - name: node-notebook
-          persistentVolumeClaim:
-            claimName: node-notebook-pvc
-        - name: master-weights
-          persistentVolumeClaim:
-            claimName: master-weights-pvc
-        - name: aggregated-json-files
-          persistentVolumeClaim:
-            claimName: aggregated-json-file-pvc
-        - name: federated-send-results
-          persistentVolumeClaim:
-            claimName: federated-send-results-pvc
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v20  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v21  # Replace with your Docker image name
           ports:
             - containerPort: 8002
-          volumeMounts:
-            - mountPath: /app/nodes_notebook
-              name: node-notebook
-            - mountPath: /app/master_received_weights_json
-              name: master-weights
-            - mountPath: /app/aggregated_json_files
-              name: aggregated-json-files
-            - mountPath: /app/federated_send_results
-              name: federated-send-results
+

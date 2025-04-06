@@ -1,0 +1,10 @@
+
+docker build -t receive-fed-weights:v2  . && docker tag receive-fed-weights:v2 pepi1989/receive-fed-weights:v1  && docker push pepi1989/receive-fed-weights:v1
+
+# to install
+kubectl apply -f receive-fed-weights-deployment.yaml
+kubectl apply -f receive-fed-weights-service.yaml
+
+# to delete
+kubectl delete -f receive-fed-weights-deployment.yaml
+kubectl delete -f receive-fed-weights-service.yaml

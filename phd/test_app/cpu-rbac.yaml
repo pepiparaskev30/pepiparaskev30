@@ -1,0 +1,55 @@
+# Create a ServiceAccount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpu-app-sa
+
+---
+# Create a ClusterRole for accessing nodes
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-viewer-cluster
+rules:
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list"]
+
+---
+# Create a ClusterRoleBinding to bind the ClusterRole to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-viewer-cluster-binding
+roleRef:
+  name: node-viewer-cluster
+  kind: ClusterRole
+subjects:
+- kind: ServiceAccount
+  name: cpu-app-sa
+  namespace: default
+
+---
+# Create a ClusterRole for accessing Prometheus metrics
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-access
+rules:
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["pods", "nodes"]
+  verbs: ["get", "list"]
+
+---
+# Create a ClusterRoleBinding to bind the ClusterRole to the ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus-access-binding
+roleRef:
+  name: prometheus-access
+  kind: ClusterRole
+subjects:
+- kind: ServiceAccount
+  name: cpu-app-sa
+  namespace: default

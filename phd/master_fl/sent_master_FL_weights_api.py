@@ -19,51 +19,73 @@ training knowledge
 
 '''
 
-# Import necessary libraries
-from utilities import append_record_to_csv
-from fastapi import FastAPI, File, Form
-from fastapi.responses import JSONResponse
-from fastapi import UploadFile
-import uvicorn, os, traceback
+# fedasync_server.py
 
-# Define global variables
-MASTER_WEIGHTS_RECEIVE_DIR = "/app/master_received_weights_json"
-NODE_NOTBOOK_DIR = "/app/nodes_notebook"
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import Dict, List
+import numpy as np
+import threading
+import uvicorn
 
-# Application's main functionality
 app = FastAPI()
 
-@app.post("/upload_weights_fdl_master")
-async def upload_file(
-    file: UploadFile = File(...),
-    target_name: str = Form(...),
-    node_name: str = Form(...)
-):
-    try:
-        # Ensure the directory exists before trying to write files
-        if not os.path.exists(MASTER_WEIGHTS_RECEIVE_DIR):
-            os.makedirs(MASTER_WEIGHTS_RECEIVE_DIR)
-        
-        # Handle the uploaded file and write it to the appropriate directory
-        contents = await file.read()
-        file_path = f"{MASTER_WEIGHTS_RECEIVE_DIR}/weights_{target_name}_{node_name}.json"
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        
-        print(f"File uploaded and saved to {file_path}")
-    except Exception as e:
-        print(f"Error processing request: {e}")
-        traceback.print_exc()
-        raise
-    
-    notebook_file_path = f"{NODE_NOTBOOK_DIR}"+"/"+"nodes_notebook.csv"
-    print(f"Appending node name to {notebook_file_path}", flush=True)
-    
-    # Append the node name to the CSV file
-    append_record_to_csv(notebook_file_path, node_name)
+# Global state per target resource
+global_models = {}  # target -> {model, round, client_versions}
+alpha = 0.5
+lock = threading.Lock()
 
-    return JSONResponse(content={"message": "File and node name uploaded successfully to the master node"}, status_code=200)
+class ModelUpdate(BaseModel):
+    client_id: str
+    target_resource: str
+    client_model: Dict[str, List[float]]
 
-# Run the application with uvicorn
+@app.post("/upload_weights")
+def receive_weights(update: ModelUpdate):
+    with lock:
+        target = update.target_resource
+        client_id = update.client_id
+        client_weights = {k: np.array(v) for k, v in update.client_model.items()}
+
+        if target not in global_models:
+            global_models[target] = {
+                "model": {k: np.zeros_like(v) for k, v in client_weights.items()},
+                "round": 0,
+                "client_versions": {}
+            }
+
+        state = global_models[target]
+        global_weights = state["model"]
+        server_round = state["round"]
+        client_round = state["client_versions"].get(client_id, server_round)
+
+        staleness = server_round - client_round
+        decay = 1 / (1 + staleness) if staleness >= 0 else 1
+
+        # Apply FedAsync update
+        for k in global_weights:
+            global_weights[k] = (1 - alpha * decay) * global_weights[k] + (alpha * decay) * client_weights[k]
+
+        state["round"] += 1
+        state["client_versions"][client_id] = state["round"]
+
+        return {
+            "status": "success",
+            "message": f"Update received from {client_id} for {target}",
+            "staleness": staleness,
+            "decay": round(decay, 3),
+            "server_round": state["round"]
+        }
+
+@app.get("/global_model/{target}")
+def get_model(target: str):
+    if target in global_models:
+        return {
+            "model": {k: v.tolist() for k, v in global_models[target]["model"].items()},
+            "server_round": global_models[target]["round"]
+        }
+    return {"error": "Target not found"}, 404
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    uvicorn.run("app", host="0.0.0.0", port=8002, reload=True)
+

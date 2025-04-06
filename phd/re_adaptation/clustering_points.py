@@ -15,11 +15,11 @@ def calculate_percentage_close(points, A, threshold):
 random_points = [(random.uniform(0, 100), random.uniform(0, 100)) for _ in range(100)]
 
 # List of workers and their points
-list_with_workers = ["worker_1", "worker_2", "worker_3"]
-points_of_workers = [(10, 30), (50, 50), (60, 70)]
+list_with_workers = ["minikube"]
+points_of_workers = [(10, 30)]
 
 # Define the distance threshold
-threshold = 20  # You can adjust this value
+threshold = 30  # You can adjust this value
 
 def get_proximity_per_worker(list_with_workers:list, points_of_workers:list, user_points):
     list_with_proximities_per_worker = []
@@ -27,6 +27,9 @@ def get_proximity_per_worker(list_with_workers:list, points_of_workers:list, use
         list_with_proximities_per_worker.append((worker, calculate_percentage_close(user_points, point, threshold)))
     return list_with_proximities_per_worker
 
-print(get_proximity_per_worker(list_with_workers, points_of_workers, random_points))
+x = get_proximity_per_worker(list_with_workers, points_of_workers, random_points)
+
+print(random_points)
+
 
 

@@ -112,8 +112,8 @@ def calculate_latency_cpu(num_users, proximity_percentage, current_load):
     max_capacity = 100
     cpu_factor = get_node_available_cpu(get_node_ip_from_name(NODE_NAME))
     adjusted_load = min(current_load, max_capacity)
-    latency = ((adjusted_load + num_users) / max_capacity) * (1 - (proximity_percentage[0][1]/100)) * cpu_factor
-    latency_ms = latency * 1000
+    latency = ((adjusted_load*num_users) / max_capacity) * (1 - (proximity_percentage[0][1]/100)) * cpu_factor
+    latency_ms = latency/10000
     return latency_ms, cpu_factor
 
 # API endpoint to handle POST requests for CPU-intensive tasks
