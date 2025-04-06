@@ -498,15 +498,27 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
     print("metrics saved...")
 
     return simple_model
-
-
 def federated_learning_send(target_resource):
     file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
 
-    # Load the weights from the saved JSON file
+    # Step 1: Ensure the folder exists
+    os.makedirs(FEDERATED_WEIGHTS_PATH_SEND_CLIENT, exist_ok=True)
+
+    # Step 2: If file does not exist, create an empty weights file
+    if not os.path.exists(file_to_be_sent):
+        print(f"[WARN] File {file_to_be_sent} does not exist. Creating empty JSON...", flush=True)
+        with open(file_to_be_sent, 'w') as f:
+            json.dump({}, f, indent=4)
+
+    # Step 3: Load the weights
     with open(file_to_be_sent, 'r') as f:
         weights_data = json.load(f)
 
+    if not weights_data:
+        print(f"[WARN] Weights file {file_to_be_sent} is empty — sending will be skipped.")
+        return
+
+    # Step 4: Prepare and send the payload
     payload = {
         "client_id": NODE_NAME,
         "target_resource": target_resource,
