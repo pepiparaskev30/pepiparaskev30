@@ -364,22 +364,25 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     return data
 
 
-def data_formulation(data_flushed:list, path_to_data_file):
-    transformed_data_list = [{key: value[0] for key, value in dic.items()}
-    for dic in data_flushed
+def data_formulation(data_flushed: list, path_to_data_file):
+    transformed_data_list = [
+        {
+            key: value[0] if isinstance(value, list) and len(value) > 0 else None
+            for key, value in dic.items()
+        }
+        for dic in data_flushed
     ]
-        # Check if the file exists to determine if we need to write the header
+
     file_exists = os.path.isfile(path_to_data_file)
 
     with open(path_to_data_file, mode='a', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=header)
 
-        # Write the header only if the file does not exist or is empty
         if not file_exists:
-            writer.writeheader()  # Write header if file does not exist
+            writer.writeheader()
 
-        # Write all data at once
         writer.writerows(transformed_data_list)
+
 
 def count_csv_rows(path_to_csv_file):
     # Open the CSV file and count the number of rows
@@ -529,8 +532,8 @@ def federated_learning_send(target_resource):
     }
 
     # Optional: print payload for debugging
-    print("[DEBUG] Payload being sent:")
-    print(json.dumps(payload, indent=2), flush=True)
+    print("[DEBUG] Payload being sent: weights from the incremental trained model")
+    #print(json.dumps(payload, indent=2), flush=True)
 
     print(f"[INFO] Sending weights for '{target_resource}' to FedAsync server from client '{NODE_NAME}'", flush=True)
     retries = 0
