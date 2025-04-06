@@ -514,12 +514,7 @@ def federated_learning_send(target_resource):
     with open(file_to_be_sent, 'r') as f:
         weights_data = json.load(f)
 
-    # ✅ DEBUG CHECK FOR STRUCTURE BEFORE SENDING
-    print("[DEBUG] Preview of weights data to be sent:")
-    for key, value in list(weights_data.items())[:3]:  # Show only first 3 items
-        value_type = type(value)
-        value_preview = value[:3] if isinstance(value, list) else value
-        print(f"{key}: type={value_type}, preview={value_preview}")
+
 
     # Validate structure: must be Dict[str, List[float]]
     if not weights_data or not all(isinstance(v, list) for v in weights_data.values()):
@@ -916,17 +911,18 @@ def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
 
 def save_weights_to_json(weights_list: list, json_file_path: str):
     """
-    Save the weights of a Keras model to a JSON file with flat list format.
+    Save the weights of a Keras model to a JSON file with named keys,
+    ensuring each weight is a flat list of floats as required by the server.
     """
     weights_dict = {}
     for i, weight in enumerate(weights_list):
-        flat = weight.flatten().tolist() if isinstance(weight, np.ndarray) else weight
-        weights_dict[f"w_{i}"] = flat
+        weights_dict[f"w_{i}"] = np.array(weight).flatten().tolist()
 
     with open(json_file_path, 'w') as f:
         json.dump(weights_dict, f, indent=4)
 
     print(f"[INFO] Saved weights to {json_file_path}")
+
 
 
 
