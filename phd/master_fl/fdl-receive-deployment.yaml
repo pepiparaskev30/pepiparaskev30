@@ -22,7 +22,7 @@ spec:
           effect: "NoSchedule"
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v21  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v22  # Replace with your Docker image name
           ports:
             - containerPort: 8002
 

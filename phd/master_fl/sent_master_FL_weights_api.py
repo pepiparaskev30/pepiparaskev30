@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-# Script: fed_master.py
+# Script: sent_master_FL_weights_api.py
 # Maintainer: Pepi Paraskevoulakou <e.paraskevoulakou@unipi.gr>
 # Role: Lead Developer
 # Copyright (c) 2023 Pepi Paraskevoulakou <e.paraskevoulakou@unipi.gr>
@@ -87,5 +87,6 @@ def get_model(target: str):
     return {"error": "Target not found"}, 404
 
 if __name__ == "__main__":
-    uvicorn.run("app", host="0.0.0.0", port=8002, reload=True)
+    uvicorn.run("sent_master_FL_weights_api:app", host="0.0.0.0", port=8002, reload=True)
+
 
