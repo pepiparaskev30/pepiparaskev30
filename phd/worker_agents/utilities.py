@@ -163,7 +163,7 @@ class Gatherer:
 
 def get_node_ip_from_name(node_name):
     try:
-        config.load_incluster_config()  # Use in-cluster config (for Pods in k8s)
+        config.load_kube_config() # Use in-cluster config (for Pods in k8s)
         configuration = client.Configuration()
         configuration.verify_ssl = False  # 🚨 Disable SSL verification (only for dev)
         client.Configuration.set_default(configuration)
