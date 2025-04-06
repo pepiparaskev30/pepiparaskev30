@@ -134,6 +134,7 @@ class Gatherer:
 
     # Start a thread and when it finishes, start another one
     def flush_data():
+        global iterator
         start_time = time.time()
         N = Gatherer.prometheus_data_queue.qsize()
 
@@ -142,7 +143,7 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        preprocessing(data_list, DATA_GENERATION_PATH)
+        iterator = preprocessing(data_list, DATA_GENERATION_PATH, iterator)  # ✅ Update global iterator
         Gatherer.ready_flag = True
 
         end_time = time.time()
@@ -677,25 +678,27 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
     if row_count >= 15:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
 
+        # 🛠️ Preprocess and extract features regardless of iterator
+        updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
+        features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
+        features_cpu = ['mem', "network_receive", "network_transmit", "load"]
+        features_ram = ['cpu', "network_receive", "network_transmit", "load"]
+
         if iterator == 0:
             # === INITIAL TRAINING ONLY ONCE ===
-            updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
-            features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
-            features_cpu = ['mem', "network_receive", "network_transmit", "load"]
-            features_ram = ['cpu', "network_receive", "network_transmit", "load"]
             init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
 
             for target_resource in targets:
                 init_training_based_on_resource(init_training_, target_resource, early_stopping)
                 print("Initial training completed", flush=True)
 
-            iterator += 1  # <--- CRITICAL FIX
+            iterator += 1
             print(f"[DEBUG] Initial training done. Moving to iterator = {iterator}", flush=True)
 
         else:
             print("🌀 Incremental procedure started", flush=True)
-            updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
             incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+
 
             for i in range(0, 3):  # now the loop is only inside incremental logic
                 for target_resource in targets:
