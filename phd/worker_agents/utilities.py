@@ -70,11 +70,7 @@ from sklearn.impute import SimpleImputer
 from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
-from kubernetes.client.rest import ApiException
-import urllib3
 
-# Suppress only the specific SSL warning (safe in dev/local envs)
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 ############  START logging properties #################
 #ignore information messages from terminal
@@ -160,24 +156,14 @@ class Gatherer:
         threading.Thread(target=Gatherer.flush_data).start()
         return
 
-
+# Function to retrieve the internal IP of a node by its name
 def get_node_ip_from_name(node_name):
-    try:
-        config.load_kube_config() # Use in-cluster config (for Pods in k8s)
-        configuration = client.Configuration()
-        configuration.verify_ssl = False  # 🚨 Disable SSL verification (only for dev)
-        client.Configuration.set_default(configuration)
-
-        v1 = client.CoreV1Api()
-        node = v1.read_node(name=node_name)
-        for address in node.status.addresses:
-            if address.type == "InternalIP":
-                return address.address
-        print(f"[WARN] No InternalIP found for node: {node_name}", flush=True)
-    except ApiException as e:
-        print(f"[ERROR] Kubernetes API exception: {e}", flush=True)
-    except Exception as e:
-        print(f"[ERROR] Unexpected error fetching node IP: {e}", flush=True)
+    config.load_incluster_config()  # Load cluster config
+    v1 = client.CoreV1Api()
+    node = v1.read_node(name=node_name)
+    for address in node.status.addresses:
+        if address.type == "InternalIP":
+            return address.address
     return None
 
 
@@ -682,7 +668,7 @@ def clear_csv_content(csv_file):
         writer.writerow(header)  # Write the header back to the file
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
-
+    
 def preprocessing(data_flush_list, path_to_data_file, iterator=0):
     print(data_flush_list, flush=True)
     data_formulation(data_flush_list, path_to_data_file)
