@@ -1,0 +1,30 @@
+# Python cache and logs
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Runtime/generated files
+*.csv
+*.h5
+*.json
+*.weights.json
+*.metrics.csv
+*.ipynb
+
+# Data folders (generated or heavy)
+data/
+tmp/
+output/
+__outputs__/
+federated_send_results/
+federated_received_results/
+evaluation_results/
+
+# Env files
+.env
+.env.*
+
+# OS clutter
+.DS_Store
+Thumbs.db
