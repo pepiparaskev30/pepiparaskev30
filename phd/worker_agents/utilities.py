@@ -995,36 +995,45 @@ def delete_file(file_name):
 import json
 
 def update_model_with_federated_weights(loaded_model, target_resource):
-    file_path = f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json"
+    possible_files = [
+        f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json",
+        f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json"
+    ]
 
-    try:
-        with open(file_path, 'r') as json_file:
-            raw_data = json_file.read().strip()
-
-            # Skip if empty
-            if not raw_data:
-                raise ValueError(f"[❌ ERROR] File '{file_path}' is empty")
-
-            # Try parsing
-            weights_data = json.loads(raw_data)
-
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"[❌ ERROR] Failed to load weights from {file_path}: {e}", flush=True)
-        print("[⚠️ DEBUG] Content was:", flush=True)
-        with open(file_path, 'r') as f:
-            print(f.read(), flush=True)
-        return loaded_model  # Optionally skip update or return model as-is
-
-    # Continue as before
-    for layer in loaded_model.layers:
-        if layer.name in weights_data:
+    for file_path in possible_files:
+        if os.path.exists(file_path):
             try:
-                layer.set_weights([np.array(weights_data[layer.name][param]) for param in layer.trainable_weights])
-            except Exception as e:
-                print(f"[❌ ERROR] Could not set weights for {layer.name}: {e}")
+                with open(file_path, 'r') as json_file:
+                    raw_data = json_file.read().strip()
 
-    delete_file(file_path)
+                    if not raw_data:
+                        raise ValueError(f"[❌ ERROR] File '{file_path}' is empty")
+
+                    weights_data = json.loads(raw_data)
+
+                print(f"[✅ INFO] Loaded federated weights from {file_path}", flush=True)
+
+                # Apply weights to the model
+                for layer in loaded_model.layers:
+                    if layer.name in weights_data:
+                        layer.set_weights([
+                            np.array(weights_data[layer.name][param])
+                            for param in layer.trainable_weights
+                        ])
+
+                delete_file(file_path)
+                return loaded_model
+
+            except (json.JSONDecodeError, ValueError) as e:
+                print(f"[❌ ERROR] Failed to load weights from {file_path}: {e}", flush=True)
+                print("[⚠️ DEBUG] Content was:", flush=True)
+                with open(file_path, 'r') as f:
+                    print(f.read(), flush=True)
+                return loaded_model  # Return original model if failed
+
+    print(f"[❌ ERROR] No valid federated weights file found for '{target_resource}'", flush=True)
     return loaded_model
+
 
 
 #custom made function to apply k-nn in missing-value ts columns
