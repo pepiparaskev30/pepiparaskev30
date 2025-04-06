@@ -498,32 +498,38 @@ def train_model(target_resource,simple_model, train_x, train_y,validation_x,vali
     print("metrics saved...")
 
     return simple_model
+
 def federated_learning_send(target_resource):
     file_to_be_sent = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
 
-    # Step 1: Ensure the folder exists
+    # Ensure the folder exists
     os.makedirs(FEDERATED_WEIGHTS_PATH_SEND_CLIENT, exist_ok=True)
 
-    # Step 2: If file does not exist, create an empty weights file
+    # If file does not exist, create an empty weights file
     if not os.path.exists(file_to_be_sent):
         print(f"[WARN] File {file_to_be_sent} does not exist. Creating empty JSON...", flush=True)
         with open(file_to_be_sent, 'w') as f:
             json.dump({}, f, indent=4)
 
-    # Step 3: Load the weights
+    # Load the weights
     with open(file_to_be_sent, 'r') as f:
         weights_data = json.load(f)
 
-    if not weights_data:
-        print(f"[WARN] Weights file {file_to_be_sent} is empty — sending will be skipped.")
+    # Validate structure: must be Dict[str, List[float]]
+    if not weights_data or not all(isinstance(v, list) for v in weights_data.values()):
+        print(f"[WARN] Weights file {file_to_be_sent} is empty or invalid — sending will be skipped.")
         return
 
-    # Step 4: Prepare and send the payload
+    # Prepare and send the payload
     payload = {
         "client_id": NODE_NAME,
         "target_resource": target_resource,
         "client_model": weights_data
     }
+
+    # Optional: print payload for debugging
+    print("[DEBUG] Payload being sent:")
+    print(json.dumps(payload, indent=2), flush=True)
 
     print(f"[INFO] Sending weights for '{target_resource}' to FedAsync server from client '{NODE_NAME}'", flush=True)
     retries = 0
@@ -545,6 +551,7 @@ def federated_learning_send(target_resource):
 
     if retries == max_retries:
         print("[ERROR] Failed to send weights after multiple retries.", flush=True)
+
 
 def federated_receive(target_resource, max_retries=5, retry_delay=2):
     url = f"{FEDERATION_URL_RECEIVE}/{target_resource}"
@@ -902,15 +909,17 @@ def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
 
 def save_weights_to_json(weights_list: list, json_file_path: str):
     """
-    Save the weights of a Keras model to a JSON file using layer names.
+    Save the weights of a Keras model to a JSON file with named keys (required by server).
     """
     weights_dict = {}
-    for idx, weight_array in enumerate(weights_list):
-        weights_dict[f"weight_{idx}"] = weight_array  # simple naming
+    for i, weight in enumerate(weights_list):
+        weights_dict[f"w_{i}"] = weight  # Use a simple naming pattern
 
     with open(json_file_path, 'w') as f:
         json.dump(weights_dict, f, indent=4)
+
     print(f"[INFO] Saved weights to {json_file_path}")
+
 
 
 
