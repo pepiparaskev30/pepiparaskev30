@@ -986,7 +986,15 @@ def delete_file(file_name):
 def update_model_with_federated_weights(loaded_model, target_resource):
     ### this is important code
     # Load weights from JSON file
-    with open(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", 'r') as json_file:
+    filename = f"{target_resource}_weights_{NODE_NAME}_aggregated.json"
+    filepath = os.path.join(FEDERATED_WEIGHTS_PATH_RECEIVE, filename)
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"[❌ ERROR] Federated weights file not found: {filepath}")
+
+    with open(filepath, 'r') as json_file:
+        weights_data = json.load(json_file)
+
         weights_data = json.load(json_file)
     # Iterate through layers in the model
     for layer in loaded_model.layers:
@@ -1168,20 +1176,16 @@ def preprocess_time_series_data(df:pd.DataFrame):
     Main function to perform all the pre-processing steps following a specific order
     '''
     pipeline = DataPipeline(df)
-    print("Data inserted, pre-processing process is initialized")
-    time.sleep(1)
-    print("1. Missing values detection and imputation", flush=True)
-    print("===========================================")
+    print("📥 Data inserted, pre-processing process is initialized", flush=True)
+    print()  # This adds a newline
+    print("🔍 Missing values detection and imputation", flush=True)
+    print()  # This adds a newline
     pipeline.missing_values()
-    print("===========================================")
-    print("2. Feature engineering", flush=True)
-    print("===========================================")
-    time.sleep(1)
+    print("🛠️ Feature engineering", flush=True)
+    print()  # This adds a newline
     pipeline.feature_engineering("cpu")
     pipeline.feature_engineering("mem")
-    print("3. Normalization",flush=True)
-    print("===========================================")
-    time.sleep(1)
+    print("📏 Normalization", flush=True)
     pipeline.normalization()
     causality_cpu = pipeline.get_causality(column_name="cpu")
     causality_ram  = pipeline.get_causality(column_name="mem")
