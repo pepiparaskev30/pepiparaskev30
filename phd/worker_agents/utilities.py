@@ -713,7 +713,7 @@ def preprocessing(data_flush_list,path_to_data_file, iterator=0):
                             print("wait now!!!", flush=True)
                             time.sleep(10)
                             while True:
-                                federated_weights = federated_receive(FEDERATION_URL_RECEIVE, target_resource=target_resource)
+                                federated_weights = federated_receive(target_resource)
                                 
                                 if federated_weights != None:
                                     print(f"[INFO]: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} \n MESSAGE: Aggregated weights have been received")
@@ -900,19 +900,14 @@ def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
         # Append the metrics
         writer.writerow({'MSE': mse, 'RMSE': rmse, 'R2': r2})
 
-def save_weights_to_json(weights_list:list, json_file_path: str):
+def save_weights_to_json(weights_list: list, json_file_path: str):
     """
     Save the weights of a Keras model to a JSON file.
-
-    Parameters:
-    - model: A Keras model.
-    - json_file_path: The file path to save the JSON file.
     """
-    # Get the weights from the model
-    #weights_list = [arr.tolist() for arr in model.get_weights()]
+    with open(json_file_path, 'w') as f:
+        json.dump(weights_list, f, indent=4)
+    print(f"[INFO] Saved weights to {json_file_path}")
 
-    # Convert to JSON string
-    weights_json = json.dumps(weights_list)
 
 def file_contains_word(path_, word):
     """
