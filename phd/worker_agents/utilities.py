@@ -857,7 +857,9 @@ def incremental_training(incremental_training_, target_resource, iterator):
     weights_file = WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5"
     incremental_model.save_weights(weights_file)
     print("weights saved", flush=True)
-    time.sleep(10)
+    print()
+    print("⏳ Waiting briefly before next step...", flush=True)
+    print()
     logging.info(f"model: {incremental_model} loaded")
 
     # Apply federated weights if they exist
