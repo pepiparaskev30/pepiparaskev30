@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: publication-data
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: node-publication-data
+  template:
+    metadata:
+      labels:
+        app: node-publication-data
+    spec:
+      serviceAccountName: publication-data-sa  # just added
+      nodeSelector:
+        custom-label: pepi-master  # Matches the label on pepi-master
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: name-node-container
+          image: pepi1989/ode-publication-data:v0  # Replace this with your correct image
+          imagePullPolicy: Always
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: PROMETHEUS_URL
+              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+
