@@ -37,5 +37,5 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: PROMETHEUS_URL
-              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+              value: "http://prometheus.monitoring.svc.cluster.local:9090"
 
