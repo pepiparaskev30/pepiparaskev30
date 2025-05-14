@@ -28,9 +28,9 @@ metadata:
   name: publication-data-rolebinding
 subjects:
 - kind: ServiceAccount
-  name: publication-data-sa  # ✅ Use the correct custom service account here
+  name: publication-data-sa  # ✅ Correct service account here
   namespace: default
 roleRef:
   kind: ClusterRole
-  name: agent-role
+  name: publication-data-role  # ✅ Reference to the correct ClusterRole
   apiGroup: rbac.authorization.k8s.io
