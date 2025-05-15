@@ -173,7 +173,7 @@ def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="no
 
 
 
-num_samples = 10  # ~1 minute of data if every 2s
+num_samples = 500  # ~1 minute of data if every 2s
 # Initialize DataFrame
 df = pd.DataFrame()
 
@@ -203,7 +203,7 @@ for _ in range(num_samples):
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
         #print(data)
 
-        time.sleep(2)
+        time.sleep(5)
 
     except Exception as e:
         print(f"Error: {e}")
