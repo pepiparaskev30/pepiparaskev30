@@ -79,18 +79,75 @@ def get_memory_usage(instance):
 
     # Output
     return {"ram_usage": usage_raw}
-def get_network_receive_rate(instance, prometheus_url = PROMETHEUS_URL, device="eth0"):
+
+def get_network_receive_rate(instance, prometheus_url = PROMETHEUS_URL, device="eth0", max_bandwidth_bps=1_000_000_000):
     """
-    Returns network receive rate (bytes/sec) for a specific interface on the node.
+    Returns normalized network receive rate (0–1) for a given interface.
+
+    Args:
+        instance (str): Node IP and port, e.g., "192.168.67.2:9100"
+        prometheus_url (str): Prometheus base URL
+        device (str): Network interface, default "eth0"
+        max_bandwidth_bps (int): Max interface capacity in bytes/sec (default 1 Gbps)
+
+    Returns:
+        dict: {
+            "net_rx_bytes_per_sec": float,
+            "net_rx_normalized": float
+        }
     """
     query = f'rate(node_network_receive_bytes_total{{instance="{instance}",device="{device}"}}[1m])'
     response = requests.get(f"{prometheus_url}/api/v1/query", params={"query": query})
+    
     if response.status_code != 200:
         raise RuntimeError(f"Prometheus query failed: {response.status_code}")
+    
     result = response.json().get("data", {}).get("result", [])
-    return float(result[0]["value"][1]) if result else 0.0
+    rate = float(result[0]["value"][1]) if result else 0.0
+
+    normalized = rate / max_bandwidth_bps if max_bandwidth_bps > 0 else 0.0
+
+    return {
+        "net_rx_bytes_per_sec": rate,
+        "net_rx_normalized": min(normalized, 1.0)  # Clamp to 1.0 if it spikes over max
+    }
+
+
+def get_network_transmit_rate(instance, prometheus_url = PROMETHEUS_URL, device="eth0", max_packets_per_sec=1_000_000):
+    """
+    Returns the normalized transmit packet rate (0–1) for a given interface.
+
+    Args:
+        instance (str): e.g., "192.168.67.2:9100"
+        prometheus_url (str): Prometheus base URL
+        device (str): Network interface, default "eth0"
+        max_packets_per_sec (int): Expected maximum packet rate for normalization
+
+    Returns:
+        dict: {
+            "net_tx_packets_per_sec": float,
+            "net_tx_normalized": float
+        }
+    """
+    query = f'rate(node_network_transmit_packets_total{{instance="{instance}",device="{device}"}}[1m])'
+    response = requests.get(f"{prometheus_url}/api/v1/query", params={"query": query})
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Prometheus query failed: {response.status_code}")
+    
+    result = response.json().get("data", {}).get("result", [])
+    rate = float(result[0]["value"][1]) if result else 0.0
+
+    normalized = rate / max_packets_per_sec if max_packets_per_sec > 0 else 0.0
+
+    return {
+        "net_tx_packets_per_sec": rate,
+        "net_tx_normalized": min(normalized, 1.0)  # Clamp to 1.0 if exceeded
+    }
 
 
 print(get_cpu_usage(NODE_INSTANCE))
 print(get_memory_usage(NODE_INSTANCE))
 print(get_network_receive_rate(NODE_INSTANCE))
+print(get_network_receive_rate(NODE_INSTANCE))
+print(get_network_transmit_rate(NODE_INSTANCE))
