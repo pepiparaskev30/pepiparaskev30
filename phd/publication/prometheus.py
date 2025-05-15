@@ -1,7 +1,9 @@
 import requests
 import json, time
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
+timestamp = datetime.now(timezone.utc).isoformat()
+
 
 PROMETHEUS_URL = "http://localhost:9098"
 NODE_INSTANCE = "192.168.67.2:9100"
@@ -148,12 +150,30 @@ def get_network_transmit_rate(instance, prometheus_url = PROMETHEUS_URL, device=
     }
 
 def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="node_load1", core_count=8):
+    """
+    Fetches the normalized load average (1m, 5m, or 15m) for a given node.
+    Normalized by core count.
+    """
+    if load_type not in {"node_load1", "node_load5", "node_load15"}:
+        raise ValueError("Invalid load_type. Must be one of: 'node_load1', 'node_load5', 'node_load15'.")
+
     query = f'{load_type}{{instance="{instance}"}}'
-    load = get_prometheus_value(query, prometheus_url)
+    url = f'{prometheus_url}/api/v1/query'
+    response = requests.get(url, params={'query': query})
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Prometheus query failed: HTTP {response.status_code}")
+
+    result = response.json().get("data", {}).get("result", [])
+    load = float(result[0]["value"][1]) if result else 0.0
+
+    # Normalize by core count (cap at 1.0)
     return min(load / core_count, 1.0)
 
 
+
 num_samples = 30  # ~1 minute of data if every 2s
+df = pd.DataFrame()
 
 for _ in range(num_samples):
     try:
