@@ -145,9 +145,35 @@ def get_network_transmit_rate(instance, prometheus_url = PROMETHEUS_URL, device=
         "net_tx_normalized": min(normalized, 1.0)  # Clamp to 1.0 if exceeded
     }
 
+def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="node_load1"):
+    """
+    Fetches the load average (1m, 5m, or 15m) for a given node.
+
+    Args:
+        instance (str): Node instance, e.g., "192.168.67.2:9100"
+        prometheus_url (str): Base Prometheus URL
+        load_type (str): One of "node_load1", "node_load5", or "node_load15"
+
+    Returns:
+        float: The load average value, or 0.0 if unavailable
+    """
+    if load_type not in {"node_load1", "node_load5", "node_load15"}:
+        raise ValueError("Invalid load_type. Must be one of: 'node_load1', 'node_load5', 'node_load15'.")
+
+    query = f'{load_type}{{instance="{instance}"}}'
+    url = f'{prometheus_url}/api/v1/query'
+    response = requests.get(url, params={'query': query})
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Prometheus query failed: HTTP {response.status_code}")
+
+    result = response.json().get("data", {}).get("result", [])
+    return float(result[0]["value"][1]) if result else 0.0
+
 
 print(get_cpu_usage(NODE_INSTANCE))
 print(get_memory_usage(NODE_INSTANCE))
 print(get_network_receive_rate(NODE_INSTANCE))
-print(get_network_receive_rate(NODE_INSTANCE))
-print(get_network_transmit_rate(NODE_INSTANCE))
+print(get_network_receive_rate(NODE_INSTANCE)['net_rx_normalized'])
+print(get_network_transmit_rate(NODE_INSTANCE)['net_tx_normalized'])
+print(f"load_1m: {get_node_load_average(NODE_INSTANCE)}")
