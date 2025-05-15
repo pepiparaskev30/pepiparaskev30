@@ -5,7 +5,7 @@ import random
 import numpy as np
 
 # API endpoint
-API_URL = "http://192.168.67.2:8003/simulate"
+API_URL = "http://example.com/simulate"
 
 # Simulation duration
 DURATION_SECONDS = 10
