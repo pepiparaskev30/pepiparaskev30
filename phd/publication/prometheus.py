@@ -174,32 +174,39 @@ def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="no
 
 
 num_samples = 10  # ~1 minute of data if every 2s
+# Initialize DataFrame
 df = pd.DataFrame()
 
+# Loop to collect samples
 for _ in range(num_samples):
     try:
-        # Capture current timestamp
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now(timezone.utc).isoformat()
 
-        # Collect metrics
+        # Get metrics
+        cpu = get_cpu_usage(NODE_INSTANCE)["cpu_usage"]
+        mem = get_memory_usage(NODE_INSTANCE)["ram_usage"]
+        net_rx = get_network_receive_rate(NODE_INSTANCE)
+        net_tx = get_network_transmit_rate(NODE_INSTANCE)
+        load = get_node_load_average(NODE_INSTANCE, load_type="node_load1", core_count=8)
+
+        # Flatten and normalize values
         data = {
             "timestamp": timestamp,
-            "cpu_usage": get_cpu_usage(NODE_INSTANCE),
-            "memory_usage": get_memory_usage(NODE_INSTANCE),
-            "net_rx_norm": get_network_receive_rate(NODE_INSTANCE),
-            "net_tx_norm": get_network_transmit_rate(NODE_INSTANCE),
-            "load_1m_norm": get_node_load_average(NODE_INSTANCE, load_type="node_load1", core_count=8),
+            "cpu_usage": round(cpu, 6),
+            "memory_usage": round(mem, 6),
+            "net_rx_norm": float(f"{net_rx['net_rx_normalized']:.10f}"),
+            "net_tx_norm": float(f"{net_tx['net_tx_normalized']:.10f}"),
+            "load_1m_norm": round(load, 6)
         }
 
         # Append to DataFrame
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-        print("Data added")
-        #print(data)  # Optional: print live sample
+        print(data)
+
         time.sleep(2)
 
     except Exception as e:
         print(f"Error: {e}")
         time.sleep(2)
 
-# Optional: Save to CSV
-df.to_csv("node_monitoring_data.csv", index=False)
+df.to_csv("monitoring_data.csv", index=False)
