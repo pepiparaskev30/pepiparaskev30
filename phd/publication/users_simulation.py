@@ -44,7 +44,7 @@ def simulate():
         thread = threading.Thread(target=send_request, args=(num_users, load_type))
         thread.start()
 
-        time.sleep(0.2)  # Adjust rate here (5 requests per second)
+        time.sleep(2)  # Adjust rate here (5 requests per second)
 
     print("Simulation completed.")
 
