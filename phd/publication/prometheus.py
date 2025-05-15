@@ -1,5 +1,7 @@
 import requests
-import json
+import json, time
+import pandas as pd
+from datetime import datetime
 
 PROMETHEUS_URL = "http://localhost:9098"
 NODE_INSTANCE = "192.168.67.2:9100"
@@ -171,9 +173,32 @@ def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="no
     return float(result[0]["value"][1]) if result else 0.0
 
 
-print(get_cpu_usage(NODE_INSTANCE))
-print(get_memory_usage(NODE_INSTANCE))
-print(get_network_receive_rate(NODE_INSTANCE))
-print(get_network_receive_rate(NODE_INSTANCE)['net_rx_normalized'])
-print(get_network_transmit_rate(NODE_INSTANCE)['net_tx_normalized'])
-print(f"load_1m: {get_node_load_average(NODE_INSTANCE)}")
+num_samples = 30  # ~1 minute of data if every 2s
+
+for _ in range(num_samples):
+    try:
+        # Capture current timestamp
+        timestamp = datetime.utcnow().isoformat()
+
+        # Collect metrics
+        data = {
+            "timestamp": timestamp,
+            "cpu_usage": get_cpu_usage(NODE_INSTANCE),
+            "memory_usage": get_memory_usage(NODE_INSTANCE),
+            "net_rx_norm": get_network_receive_rate(NODE_INSTANCE),
+            "net_tx_norm": get_network_transmit_rate(NODE_INSTANCE),
+            "load_1m_norm": get_node_load_average(NODE_INSTANCE, load_type="node_load1", core_count=8),
+        }
+
+        # Append to DataFrame
+        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+
+        print(data)  # Optional: print live sample
+        time.sleep(2)
+
+    except Exception as e:
+        print(f"Error: {e}")
+        time.sleep(2)
+
+# Optional: Save to CSV
+df.to_csv("node_monitoring_data.csv", index=False)
