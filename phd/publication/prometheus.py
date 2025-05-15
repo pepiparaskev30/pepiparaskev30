@@ -173,7 +173,7 @@ def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="no
 
 
 
-num_samples = 50  # ~1 minute of data if every 2s
+num_samples = 30  # ~1 minute of data if every 2s
 # Initialize DataFrame
 df = pd.DataFrame()
 

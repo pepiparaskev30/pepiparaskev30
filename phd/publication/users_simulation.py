@@ -11,7 +11,7 @@ API_URL = "http://example.com/simulate"
 DURATION_SECONDS = 600
 
 # Gaussian user load parameters
-MEAN_USERS = 200
+MEAN_USERS = 120
 STD_DEV = 70
 MIN_USERS = 30
 MAX_USERS = 500
@@ -44,7 +44,7 @@ def simulate():
         thread = threading.Thread(target=send_request, args=(num_users, load_type))
         thread.start()
 
-        time.sleep(10)  # Adjust rate here (5 requests per second)
+        time.sleep(10)  # 1.4–3.3 req/sec on average
 
     print("Simulation completed.")
 
