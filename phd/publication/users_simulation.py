@@ -8,7 +8,7 @@ import numpy as np
 API_URL = "http://example.com/simulate"
 
 # Simulation duration
-DURATION_SECONDS = 10
+DURATION_SECONDS = 600
 
 # Gaussian distribution parameters
 MEAN_USERS = 200

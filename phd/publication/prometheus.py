@@ -201,7 +201,7 @@ for _ in range(num_samples):
 
         # Append to DataFrame
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-        print(data)
+        #print(data)
 
         time.sleep(2)
 
