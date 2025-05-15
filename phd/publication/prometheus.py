@@ -80,5 +80,5 @@ def get_memory_usage(instance):
     # Output
     return {"ram_usage": usage_raw}
 # Display results
-get_cpu_usage(NODE_INSTANCE)
-get_memory_usage(NODE_INSTANCE)
+print(get_cpu_usage(NODE_INSTANCE))
+print(get_memory_usage(NODE_INSTANCE))
