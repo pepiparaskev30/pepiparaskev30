@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 timestamp = datetime.now(timezone.utc).isoformat()
 
 
-PROMETHEUS_URL = "http://localhost:9098"
+
+PROMETHEUS_URL = "http://localhost:9099"
 NODE_INSTANCE = "192.168.67.2:9100"
 
 import requests
@@ -172,7 +173,7 @@ def get_node_load_average(instance, prometheus_url=PROMETHEUS_URL, load_type="no
 
 
 
-num_samples = 30  # ~1 minute of data if every 2s
+num_samples = 10  # ~1 minute of data if every 2s
 df = pd.DataFrame()
 
 for _ in range(num_samples):
@@ -192,8 +193,8 @@ for _ in range(num_samples):
 
         # Append to DataFrame
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-
-        print(data)  # Optional: print live sample
+        print("Data added")
+        #print(data)  # Optional: print live sample
         time.sleep(2)
 
     except Exception as e:
