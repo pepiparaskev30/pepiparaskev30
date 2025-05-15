@@ -203,7 +203,7 @@ for _ in range(num_samples):
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
         print(data)
 
-        time.sleep(5)
+        time.sleep(15)
 
     except Exception as e:
         print(f"Error: {e}")
