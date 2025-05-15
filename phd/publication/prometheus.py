@@ -79,6 +79,18 @@ def get_memory_usage(instance):
 
     # Output
     return {"ram_usage": usage_raw}
-# Display results
+def get_network_receive_rate(instance, prometheus_url = PROMETHEUS_URL, device="eth0"):
+    """
+    Returns network receive rate (bytes/sec) for a specific interface on the node.
+    """
+    query = f'rate(node_network_receive_bytes_total{{instance="{instance}",device="{device}"}}[1m])'
+    response = requests.get(f"{prometheus_url}/api/v1/query", params={"query": query})
+    if response.status_code != 200:
+        raise RuntimeError(f"Prometheus query failed: {response.status_code}")
+    result = response.json().get("data", {}).get("result", [])
+    return float(result[0]["value"][1]) if result else 0.0
+
+
 print(get_cpu_usage(NODE_INSTANCE))
 print(get_memory_usage(NODE_INSTANCE))
+print(get_network_receive_rate(NODE_INSTANCE))
