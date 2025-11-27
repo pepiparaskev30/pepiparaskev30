@@ -20,12 +20,12 @@ spec:
                   - key: custom-label
                     operator: In
                     values:
-                      - "worker-node-1"
-                      - "worker-node-2"
-                      - "worker-node-3"
+                      - "lab-cluster-worker"
+                      - "lab-cluster-worker2"
+
       containers:
         - name: name-node-container
-          image: pepi1989/client_pod:v203
+          image: pepi1989/revision-agent:latest
           imagePullPolicy: Always
           env:
             - name: POD_NAME
