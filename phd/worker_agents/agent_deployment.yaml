@@ -37,7 +37,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: PROMETHEUS_URL
-              value: "http://prometheus-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090"
+              value: "http://prometheus-k8s.monitoring.svc.cluster.local:9090"
             - name: FEDERATION_URL_SEND
               value: "http://fed-master-service:8002/upload_weights"
             - name: FEDERATION_URL_RECEIVE
