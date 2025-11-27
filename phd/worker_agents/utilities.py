@@ -204,7 +204,7 @@ def get_instance_for_node(node_name, prometheus_url=PROMETHEUS_URL):
         return None
 
     instance = results[0]["metric"].get("instance")
-    print(f"Resolved node '{node_name}' to instance '{instance}'", flush=True)
+    #print(f"Resolved node '{node_name}' to instance '{instance}'", flush=True)
     return instance
 
 
