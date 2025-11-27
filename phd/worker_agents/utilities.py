@@ -73,22 +73,16 @@ from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score
 
 
 ############  START logging properties #################
-#ignore information messages from terminal
 warnings.filterwarnings("ignore")
-# Set TensorFlow log level to suppress info messages
 tf.get_logger().setLevel('ERROR')
-# Configure the logger to filter out the specific message
 logger = logging.getLogger('tensorflow')
 logger.setLevel(logging.ERROR)
-# Suppress the specific message
 logger.propagate = False
 ############ END logging properties #################
 
-#module classes that helps in the pre-processing
 label_encoder = LabelEncoder()
 scaler = StandardScaler()
 
-# useful variables
 global header
 header = ["timestamp", "cpu", "mem", "network_receive", "network_transmit",  "load"]
 
@@ -105,6 +99,7 @@ early_stopping = {"best_val_loss": float('inf'), "patience" : 5, "no_improvement
 iterator = 0
 epochs = 3
 fisher_multiplier = 1000
+
 # useful ENV_VARIABLES
 NODE_NAME = os.getenv("NODE_NAME")
 DATA_GENERATION_PATH = "./data_generation_path/data.csv"
@@ -129,7 +124,6 @@ class Gatherer:
 
     # Start the threads
     def start_thread():
-        # Start a CA thread
         threading.Thread(target=Gatherer.flush_data).start()
 
     # Start a thread and when it finishes, start another one
@@ -143,21 +137,23 @@ class Gatherer:
             data_list.append(Gatherer.prometheus_data_queue.get())
 
         Gatherer.ready_flag = False
-        iterator = preprocessing(data_list, DATA_GENERATION_PATH, iterator)  # ✅ Update global iterator
+        iterator = preprocessing(data_list, DATA_GENERATION_PATH, iterator)
         Gatherer.ready_flag = True
 
         end_time = time.time()
         sum_time = end_time - start_time
 
-        # If the time is less than the wait time, sleep for the difference
         if sum_time < Gatherer.wait_time:
             time.sleep(Gatherer.wait_time - sum_time)
 
-        # Start a new use_CA thread
         threading.Thread(target=Gatherer.flush_data).start()
         return
 
-# Function to retrieve the internal IP of a node by its name
+
+# ----------------------------------------------------------------------
+# (optional) Function to retrieve InternalIP from node name
+# NOTE: no longer used for Prometheus; kept in case you need node IP elsewhere.
+# ----------------------------------------------------------------------
 def get_node_ip_from_name(node_name):
     config.load_incluster_config()  # Load cluster config
     v1 = client.CoreV1Api()
@@ -168,34 +164,12 @@ def get_node_ip_from_name(node_name):
     return None
 
 
-# Function to query Prometheus metrics
+# ----------------------------------------------------------------------
+# Prometheus metric querying helpers (instance-based)
+# ----------------------------------------------------------------------
 def query_metric(prometheus_url, promql_query):
-    # URL-encode the Prometheus query
+    """Run an instant query against Prometheus and return the 'result' list."""
     encoded_query = urllib.parse.quote(promql_query)
-    
-    # Construct the full Prometheus API URL
-    url = f"{prometheus_url}/api/v1/query?query={encoded_query}"
-
-    try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            if data.get('status') == 'success':
-                return data.get('data', {}).get('result', [])
-            else:
-                print(f"Query failed: {data.get('error')}")
-        else:
-            print(f"Error: HTTP {response.status_code}, {response.reason}")
-    except requests.exceptions.RequestException as e:
-        print(f"Request failed: {e}")
-    return []
-
-# Function to query Prometheus metrics
-def query_metric(prometheus_url, promql_query):
-    # URL-encode the Prometheus query
-    encoded_query = urllib.parse.quote(promql_query)
-    
-    # Construct the full Prometheus API URL
     url = f"{prometheus_url}/api/v1/query?query={encoded_query}"
     
     try:
@@ -213,153 +187,129 @@ def query_metric(prometheus_url, promql_query):
     return []
 
 
-def get_memory_usage(node_ip):
-    query = f'100 * (node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}} - node_memory_MemAvailable_bytes{{instance="{node_ip}:9100"}}) / node_memory_MemTotal_bytes{{instance="{node_ip}:9100"}}'
-    
-    # Send the request to Prometheus
-    response = requests.get(f"{PROMETHEUS_URL}/api/v1/query", params={'query': query})
-    
-    # Check if the request was successful
-    if response.status_code == 200:
-        data = response.json()
-        
-        # Extract the result
-        result = data['data']['result']
-        
-        # Check if result is available
-        if result:
-            value = result[0]['value'][1]  # The second element is the actual value
-            return value
-        else:
-            print(f"No result found for node {node_ip}")
-            return 0
+def get_instance_for_node(node_name, prometheus_url=PROMETHEUS_URL):
+    """
+    Given a Kubernetes node name (e.g. 'kind-worker'),
+    return the Prometheus 'instance' label for node_exporter.
+    """
+    query = f'node_uname_info{{nodename="{node_name}"}}'
+    results = query_metric(prometheus_url, query)
+
+    if not results:
+        print(f"No node_uname_info found for nodename={node_name}", flush=True)
+        all_results = query_metric(prometheus_url, "node_uname_info")
+        print("Available node_uname_info metrics:", flush=True)
+        for r in all_results:
+            print("  metric:", r.get("metric", {}), flush=True)
+        return None
+
+    instance = results[0]["metric"].get("instance")
+    print(f"Resolved node '{node_name}' to instance '{instance}'", flush=True)
+    return instance
+
+
+def get_memory_usage(instance):
+    """
+    Memory usage in % for a given Prometheus instance label.
+    """
+    query = (
+        f'100 * (node_memory_MemTotal_bytes{{instance="{instance}"}} '
+        f'- node_memory_MemAvailable_bytes{{instance="{instance}"}}) '
+        f'/ node_memory_MemTotal_bytes{{instance="{instance}"}}'
+    )
+    results = query_metric(PROMETHEUS_URL, query)
+    if results:
+        return float(results[0]['value'][1])
     else:
-        print(f"Error: {response.status_code} - {response.text}")
-        return 0
+        print(f"No result found for instance {instance} (memory)", flush=True)
+        return 0.0
 
 
-def get_network_receive_rate(node_ip):
-    # Define the Prometheus URL and the query to get network receive rate on eth0
-    query = f'rate(node_network_receive_bytes_total{{instance="{node_ip}:9100",device="eth0"}}[1m])'
-
-    # Make the API call to Prometheus
-    response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params={'query': query})
-
-    if response.status_code == 200:
-        result = response.json()
-
-        # Check if the result contains any data
-        if result["status"] == "success" and result["data"]["result"]:
-            # Extract the rate value from the result
-            value = result["data"]["result"][0]["value"][1]
-            return float(value)
-        else:
-            #print(f"No data returned for node {node_ip}", flush=True)
-            return 0
-    else:
-        print(f"Failed to query Prometheus: {response.status_code}", flush=True)
-        return 0
-
-def get_network_transmit_rate(node_ip):
-    # Define the Prometheus URL and the query to get network transmit rate on eth0
-    query = f'rate(node_network_transmit_packets_total{{instance="{node_ip}:9100",device="eth0"}}[1m])'
-
-    # Make the API call to Prometheus
-    response = requests.get(f'{PROMETHEUS_URL}/api/v1/query', params={'query': query})
-
-    if response.status_code == 200:
-        result = response.json()
-
-        # Check if the result contains any data
-        if result["status"] == "success" and result["data"]["result"]:
-            # Extract the rate value from the result (for eth0 device)
-            value = result["data"]["result"][0]["value"][1]
-            return float(value)
-        else:
-            #print(f"No data returned for node {node_ip}", flush=True)
-            return 0
-    else:
-        print(f"Failed to query Prometheus: {response.status_code}", flush=True)
-        return 0
-
-def get_node_load_average(node_ip):
-
-    # Construct the Prometheus query for node_load1
-    query = f'node_load1{{instance="{node_ip}:9100"}}'
-    
-    # URL for Prometheus API query
-    url = f'{PROMETHEUS_URL}/api/v1/query'
-    
-    # Send GET request to Prometheus API
-    response = requests.get(url, params={'query': query})
-    
-    # Check if the request was successful
-    if response.status_code == 200:
-        data = response.json()
-        
-        # Check if the response contains data
-        if data["status"] == "success" and data["data"]["result"]:
-            # Extract the value from the result
-            load_average = float(data["data"]["result"][0]["value"][1])  # The second value is the load average
-            return load_average
-        else:
-            #print(f"No data returned for node {node_ip}.")
-            return 0
-    else:
-        print(f"Failed to fetch data from Prometheus. HTTP Status Code: {response.status_code}")
-        return 0
+def get_network_receive_rate(instance):
+    """
+    Network receive rate in BYTES/sec on eth0 for this instance.
+    """
+    query = (
+        f'rate(node_network_receive_bytes_total{{instance="{instance}",'
+        f'device="eth0"}}[1m])'
+    )
+    results = query_metric(PROMETHEUS_URL, query)
+    if results:
+        return float(results["0"]["value"][1]) if isinstance(results, dict) else float(results[0]["value"][1])
+    return 0.0
 
 
-# Function to gather various metrics for 30 seconds
+def get_network_transmit_rate(instance):
+    """
+    Network transmit rate in BYTES/sec on eth0 for this instance.
+    """
+    query = (
+        f'rate(node_network_transmit_bytes_total{{instance="{instance}",'
+        f'device="eth0"}}[1m])'
+    )
+    results = query_metric(PROMETHEUS_URL, query)
+    if results:
+        return float(results[0]["value"][1])
+    return 0.0
+
+
+def get_node_load_average(instance):
+    """
+    1-minute load average for this instance.
+    """
+    query = f'node_load1{{instance="{instance}"}}'
+    results = query_metric(PROMETHEUS_URL, query)
+    if results:
+        return float(results[0]["value"][1])
+    return 0.0
+
+
 def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
-    # Resolve node IP from node name (assuming a function to resolve node IP)
-    node_ip = get_node_ip_from_name(node_name)
-    if not node_ip:
-        print(f"Could not resolve IP for node: {node_name}")
+    """
+    Collect a snapshot of CPU, memory, network RX/TX and load1
+    for the given node name, using Prometheus instance label.
+
+    NOTE: despite the name, this currently returns a *single* timestamp
+    and first value per metric, as expected by data_formulation().
+    """
+    instance = get_instance_for_node(node_name, prometheus_url)
+    if not instance:
+        print(f"Could not resolve instance for node: {node_name}", flush=True)
         return
 
-    # Define the queries with the node's IP
-    cpu_query = f'sum(irate(node_cpu_seconds_total{{mode="user",instance="{node_ip}:9100"}}[1m]))'
-
+    # CPU: total cores used (all modes except idle) for this instance
+    cpu_query = (
+        f'sum(irate(node_cpu_seconds_total{{mode!="idle",'
+        f'instance="{instance}"}}[1m]))'
+    )
 
     rows = []
 
-    # Querying all metrics with 1-second scrape intervals
     cpu_results = query_metric(prometheus_url, cpu_query)
-    memory_value = get_memory_usage(node_ip)
-    netw_receive_value = get_network_receive_rate(node_ip)
-    netw_transmit_value = get_network_transmit_rate(node_ip)
-    load_value = get_node_load_average(node_ip)
+    cpu_value = float(cpu_results[0]["value"][1]) if cpu_results else 0.0
+    memory_value = get_memory_usage(instance)
+    netw_receive_value = get_network_receive_rate(instance)
+    netw_transmit_value = get_network_transmit_rate(instance)
+    load_value = get_node_load_average(instance)
 
-
-    # Collect current timestamp
     current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
+    # Single row; data_formulation() will use the first element of each list
+    rows.append({
+        "timestamp": current_time,
+        "cpu": cpu_value,
+        "mem": memory_value,
+        "network_receive": netw_receive_value,
+        "network_transmit": netw_transmit_value,
+        "load": load_value
+    })
 
-
-    # Extract data from results and associate each metric with the correct instance
-    for cpu_result in cpu_results:
-        instance = cpu_result['metric'].get('instance', 'unknown')
-        cpu_value = float(cpu_result['value'][1])  # The value is a [timestamp, value] pair
-
-        # Add the collected data as a new row
-        rows.append({
-            "timestamp": current_time,
-            "cpu": cpu_value,
-            "mem": memory_value, 
-            "network_receive": netw_receive_value,
-            "network_transmit": netw_transmit_value, 
-            "load": load_value
-
-        })
-
-    # Transform data into the specified format
     data = {
         "timestamp": [row["timestamp"] for row in rows],
         "cpu": [row["cpu"] for row in rows],
-        "mem": [row["mem"] for row in rows], 
-        "network_receive": [row["network_receive"] for row in rows], 
-        "network_transmit":[row["network_transmit"] for row in rows],
+        "mem": [row["mem"] for row in rows],
+        "network_receive": [row["network_receive"] for row in rows],
+        "network_transmit": [row["network_transmit"] for row in rows],
         "load": [row["load"] for row in rows],
     }
     return data
