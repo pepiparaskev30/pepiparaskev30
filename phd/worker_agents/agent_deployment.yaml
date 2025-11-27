@@ -14,7 +14,7 @@ spec:
     spec:
       serviceAccountName: agent-sa  # just added
       nodeSelector:
-        custom-label: pepi-master  # Matches the label on pepi-master
+        custom-label: test  # Matches the label on pepi-master
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
