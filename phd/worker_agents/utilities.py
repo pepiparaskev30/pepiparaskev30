@@ -621,7 +621,7 @@ def clear_csv_content(csv_file):
         writer.writerow(header)  # Write the header back to the file
 
     print(f"Content of '{csv_file}' cleared, only header remains.")
-  
+
 def preprocessing(data_flush_list, path_to_data_file, iterator):
     print(data_flush_list, flush=True)
     data_formulation(data_flush_list, path_to_data_file)
@@ -633,6 +633,8 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
         # 🛠️ Preprocess and extract features regardless of iterator
         updated_df, causality_cpu, causality_ram = preprocess_time_series_data(df)
         features_cpu, features_ram = find_resource_features(causality_cpu, causality_ram, updated_df)
+
+        # If you really want hard-coded features, keep these. Otherwise remove.
         features_cpu = ['mem', "network_receive", "network_transmit", "load"]
         features_ram = ['cpu', "network_receive", "network_transmit", "load"]
 
@@ -647,110 +649,126 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
             iterator += 1
             print(f"[DEBUG] Initial training done. Moving to iterator = {iterator}", flush=True)
 
-        else:
-            print("🌀 Incremental procedure started", flush=True)
-            incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+            # ✅ Important: do NOT touch mse/rmse/r2 here; we don't have them yet
+            clear_csv_content(path_to_data_file)
+            print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
+            print(df, flush=True)
 
+            return iterator  # <-- early exit avoids UnboundLocalError
 
-            for i in range(0, 3):  # now the loop is only inside incremental logic
-                for target_resource in targets:
-                    iterator_, target_resource, predictions_ = incremental_training(incremental_training_, target_resource, iterator)
+        # ============================================================
+        # From here on: INCREMENTAL + FEDERATED logic (iterator != 0)
+        # ============================================================
+        print("🌀 Incremental procedure started", flush=True)
+        incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
 
-                    if i % 2 == 0:
-                        print(f"🧠 Predictions for {target_resource}", flush=True)
-                        predictions_final_ = predictions_.tolist()
+        for i in range(0, 3):
+            for target_resource in targets:
+                # Use the updated iterator coming back from incremental_training
+                iterator, target_resource, predictions_ = incremental_training(
+                    incremental_training_, target_resource, iterator
+                )
 
-                        MAX_HISTORY = 20
-                        for element in predictions_final_:
-                            trained_model_predictions.append(element[0])
-                            if len(trained_model_predictions) > MAX_HISTORY:
-                                trained_model_predictions.pop(0)
+                if i % 2 == 0:
+                    print(f"🧠 Predictions for {target_resource}", flush=True)
+                    predictions_final_ = predictions_.tolist()
 
-                        result = analyze_rate_of_change(calculate_rate_of_change(trained_model_predictions))
-                        print(f"[INFO] Rate of change analysis result: {result}", flush=True)
+                    MAX_HISTORY = 20
+                    for element in predictions_final_:
+                        trained_model_predictions.append(element[0])
+                        if len(trained_model_predictions) > MAX_HISTORY:
+                            trained_model_predictions.pop(0)
 
-                        if result in (0, 1):
-                            print("[INFO] No re-adaptation triggered. Normal trend or stable.", flush=True)
-                        else:
-                            print("⚠️ [TRIGGER] Re-adaptation condition met!", flush=True)
-                            time.sleep(10)
+                    result = analyze_rate_of_change(calculate_rate_of_change(trained_model_predictions))
+                    print(f"[INFO] Rate of change analysis result: {result}", flush=True)
 
-                        predictions_final_ = []
-                        print("[INFO] Post-prediction pause done. Continuing...", flush=True)
-                        time.sleep(2)
-
-                    metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
-                    most_frequent_value = count_frequency(metrics_convergence)
-
-                    if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
-                        print()
-                        print("🚀 Welcome to Federated Learning!!", flush=True)
-                        federated_learning_send(target_resource)
-                        print("⏳ Waiting for global model aggregation...", flush=True)
-                        time.sleep(5)
-
-                        while True:
-                            federated_weights = federated_receive(target_resource)
-                            if federated_weights:
-                                print()
-                                print(f"[✅ INFO] Aggregated weights received for {target_resource}", flush=True)
-                                time.sleep(2)
-                                break
-                            else:
-                                print()
-                                print(f"[INFO] Awaiting weights for {target_resource}...", flush=True)
-                                time.sleep(2)
-
-                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json", federated_weights)
-
+                    if result in (0, 1):
+                        print("[INFO] No re-adaptation triggered. Normal trend or stable.", flush=True)
                     else:
-                        print()
-                        print("📡 Triggering federated communication (fallback path)", flush=True)
-                        time.sleep(1)
-                        federated_learning_send(target_resource)
-                        print()
-                        print("⏳ Waiting for aggregation response...", flush=True)
-                        time.sleep(5)
+                        print("⚠️ [TRIGGER] Re-adaptation condition met!", flush=True)
+                        time.sleep(10)
 
-                        while True:
-                            federated_weights = federated_receive(target_resource)
-                            if federated_weights:
-                                print(f"[✅ INFO] Aggregated weights received (fallback) for {target_resource}", flush=True)
-                                time.sleep(2)
-                                break
-                            else:
-                                print(f"[INFO] Still waiting for aggregated weights...", flush=True)
-                                time.sleep(2)
+                    predictions_final_ = []
+                    print("[INFO] Post-prediction pause done. Continuing...", flush=True)
+                    time.sleep(2)
 
-                        write_json_body(f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json", federated_weights)
+                metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
+                most_frequent_value = count_frequency(metrics_convergence)
 
-                    print(f"[INFO] ✅ Evaluating Federated Model for {target_resource}", flush=True)
-                    validation_df = incremental_training_.df_reformulation(target_resource)
-                    _, _, validation_x, validation_y = incremental_training_.train_test_split_(validation_df, sequence_length)
+                if len(most_frequent_value) == 1 and most_frequent_value[0] != 1:
+                    print()
+                    print("🚀 Welcome to Federated Learning!!", flush=True)
+                    federated_learning_send(target_resource)
+                    print("⏳ Waiting for global model aggregation...", flush=True)
+                    time.sleep(5)
 
-                    fed_model = load_keras_model(
-                        SAVED_MODELS_PATH + "/" + f"model_{target_resource}.keras",
-                        custom_objects={'Attention': Attention}
+                    while True:
+                        federated_weights = federated_receive(target_resource)
+                        if federated_weights:
+                            print()
+                            print(f"[✅ INFO] Aggregated weights received for {target_resource}", flush=True)
+                            time.sleep(2)
+                            break
+                        else:
+                            print()
+                            print(f"[INFO] Awaiting weights for {target_resource}...", flush=True)
+                            time.sleep(2)
+
+                    write_json_body(
+                        f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_aggregated.json",
+                        federated_weights
                     )
-                    fed_model = update_model_with_federated_weights(fed_model, target_resource)
-                    preds = fed_model.predict(validation_x)
 
-                    mse = calculate_mse(preds, validation_y)
-                    rmse = calculate_rmse(mse)
-                    r2 = calculate_r2_score(validation_y, preds)
+                else:
+                    print()
+                    print("📡 Triggering federated communication (fallback path)", flush=True)
+                    time.sleep(1)
+                    federated_learning_send(target_resource)
+                    print()
+                    print("⏳ Waiting for aggregation response...", flush=True)
+                    time.sleep(5)
 
-                    append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
-                    print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
+                    while True:
+                        federated_weights = federated_receive(target_resource)
+                        if federated_weights:
+                            print(f"[✅ INFO] Aggregated weights received (fallback) for {target_resource}", flush=True)
+                            time.sleep(2)
+                            break
+                        else:
+                            print(f"[INFO] Still waiting for aggregated weights...", flush=True)
+                            time.sleep(2)
 
-                time.sleep(3)
-        append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
+                    write_json_body(
+                        f"{FEDERATED_WEIGHTS_PATH_RECEIVE}/{target_resource}_weights_{NODE_NAME}_aggregated.json",
+                        federated_weights
+                    )
 
-        # ✅ New: Save to final_metrics JSON
-        metrics_dict = {"MSE": mse, "RMSE": rmse, "R2": r2}
-        save_final_metrics_json(metrics_dict, target_resource)
+                print(f"[INFO] ✅ Evaluating Federated Model for {target_resource}", flush=True)
+                validation_df = incremental_training_.df_reformulation(target_resource)
+                _, _, validation_x, validation_y = incremental_training_.train_test_split_(validation_df, sequence_length)
 
-        print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
-        print()
+                fed_model = load_keras_model(
+                    SAVED_MODELS_PATH + "/" + f"model_{target_resource}.keras",
+                    custom_objects={'Attention': Attention}
+                )
+                fed_model = update_model_with_federated_weights(fed_model, target_resource)
+                preds = fed_model.predict(validation_x)
+
+                mse = calculate_mse(preds, validation_y)
+                rmse = calculate_rmse(mse)
+                r2 = calculate_r2_score(validation_y, preds)
+
+                # ✅ Write metrics *here*, where they exist
+                append_to_csv(EVALUATION_PATH, f"{target_resource}_FDL", mse, rmse, r2)
+
+                metrics_dict = {"MSE": mse, "RMSE": rmse, "R2": r2}
+                save_final_metrics_json(metrics_dict, target_resource)
+
+                print(f"[INFO] ✅ Federated model evaluation completed for {target_resource}", flush=True)
+
+            time.sleep(3)
+
+        # shared cleanup after incremental processing
         clear_csv_content(path_to_data_file)
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
         print(df, flush=True)
@@ -758,7 +776,9 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
     else:
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} More data needed for preprocessing", flush=True)
 
-    return iterator  # <--- you MUST return this if called in a loop outside
+    return iterator  # <-- still returned for both branches
+
+
 
 
 def save_final_metrics_json(metrics_dict, target_resource):
