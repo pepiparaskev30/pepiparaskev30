@@ -70,6 +70,8 @@ from sklearn.impute import SimpleImputer
 from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
+import psutil
+import os
 
 
 ############  START logging properties #################
@@ -148,6 +150,62 @@ class Gatherer:
 
         threading.Thread(target=Gatherer.flush_data).start()
         return
+
+
+def get_process_memory_mb():
+    """
+    Returns current process RSS memory in MB.
+    """
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    return mem_info.rss / 1024**2  # MB
+
+def log_memory(tag=""):
+    rss_mb = get_process_memory_mb()
+    print(f"[MEM] {tag} | RSS: {rss_mb:.2f} MB", flush=True)
+    return rss_mb
+
+def append_memory_to_csv(evaluation_path, target, epoch, phase, rss_mb,
+                         tf_current_mb=None, tf_peak_mb=None):
+    """
+    Append memory usage info to a CSV file in EVALUATION_PATH.
+
+    - target: "cpu" or "mem"
+    - epoch: integer epoch number
+    - phase: string, e.g. "before_fit", "after_fit", "incremental_epoch_start"
+    - rss_mb: process RSS in MB
+    - tf_current_mb / tf_peak_mb: optional, can be None if not using TF memory info
+    """
+    file_path = os.path.join(evaluation_path, f"memory_{target}.csv")
+
+    fieldnames = ["epoch", "phase", "rss_mb", "tf_current_mb", "tf_peak_mb"]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # If file is new, write header
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "epoch": epoch,
+            "phase": phase,
+            "rss_mb": rss_mb,
+            "tf_current_mb": tf_current_mb if tf_current_mb is not None else "",
+            "tf_peak_mb": tf_peak_mb if tf_peak_mb is not None else "",
+        })
+
+def get_tf_cpu_memory_mb():
+    """
+    Returns (current_mb, peak_mb) from TensorFlow CPU memory info, if available.
+    """
+    try:
+        info = tf.config.experimental.get_memory_info('CPU:0')
+        current_mb = info['current'] / 1024**2
+        peak_mb = info['peak'] / 1024**2
+        return current_mb, peak_mb
+    except Exception:
+        return None, None
 
 
 # ----------------------------------------------------------------------
@@ -419,14 +477,32 @@ def init_training_based_on_resource(init_training_, target_resource, early_stopp
     print()
     print("saved")
 
-def train_model(target_resource,simple_model, train_x, train_y,validation_x,validation_y, num_epochs,early_stopping):
-    mse_list_init, rmse_list_init=[],[]
+
+
+def train_model(target_resource, simple_model, train_x, train_y,
+                validation_x, validation_y, num_epochs, early_stopping):
+    mse_list_init, rmse_list_init = [], []
+
     for epoch in range(num_epochs):
-        logging.info(f"Model started training, is on {epoch+1} epoch")
+        epoch_num = epoch + 1
+        logging.info(f"Model started training, is on {epoch_num} epoch")
 
-        simple_model.fit(train_x, train_y, epochs=epoch+1, verbose=1)  # Perform 'epoch+1' epochs of training
+        # 💾 Memory before fit
+        rss_before = get_process_memory_mb()
+        tf_curr_before, tf_peak_before = get_tf_cpu_memory_mb()
+        append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
+                             phase="before_fit", rss_mb=rss_before,
+                             tf_current_mb=tf_curr_before, tf_peak_mb=tf_peak_before)
 
-        # Validation step
+        simple_model.fit(train_x, train_y, epochs=epoch_num, verbose=1)
+
+        # 💾 Memory after fit
+        rss_after = get_process_memory_mb()
+        tf_curr_after, tf_peak_after = get_tf_cpu_memory_mb()
+        append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
+                             phase="after_fit", rss_mb=rss_after,
+                             tf_current_mb=tf_curr_after, tf_peak_mb=tf_peak_after)
+
         print("-----------------")
         val_loss = simple_model.evaluate(validation_x, validation_y, verbose=0)
         logging.info(f'Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}')
@@ -867,7 +943,14 @@ def incremental_training(incremental_training_, target_resource, iterator):
     steps_per_epoch = len(train_x) // 32  # Ensure the steps match the dataset size
 
     for epoch in range(epochs):
+        epoch_num = epoch + 1
         batch_count = 0
+
+        rss_start = get_process_memory_mb()
+        tf_curr_start, tf_peak_start = get_tf_cpu_memory_mb()
+        append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
+                            phase="incremental_epoch_start", rss_mb=rss_start,
+                            tf_current_mb=tf_curr_start, tf_peak_mb=tf_peak_start)
         try:
             for data, target in dataset_current_task:
                 # Ensure data has a batch dimension if it's missing
@@ -891,7 +974,12 @@ def incremental_training(incremental_training_, target_resource, iterator):
         except tf.errors.OutOfRangeError:
             print(f"End of dataset reached for epoch {epoch + 1}")
 
-        # Update the previous parameters for the next iteration
+        rss_end = get_process_memory_mb()
+        tf_curr_end, tf_peak_end = get_tf_cpu_memory_mb()
+        append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
+                            phase="incremental_epoch_end", rss_mb=rss_end,
+                            tf_current_mb=tf_curr_end, tf_peak_mb=tf_peak_end)
+
         prev_params = update_params(incremental_model, prev_params)
 
     # Save the model and weights after fine-tuning
