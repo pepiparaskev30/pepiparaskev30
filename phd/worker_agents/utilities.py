@@ -50,6 +50,7 @@ import time,os, json
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 import numpy as np
+import psutil
 import csv
 from collections import Counter
 from sklearn.preprocessing import LabelEncoder
