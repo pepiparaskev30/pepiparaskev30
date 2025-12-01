@@ -71,7 +71,6 @@ from sklearn.impute import SimpleImputer
 from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
-import psutil
 import os
 
 
