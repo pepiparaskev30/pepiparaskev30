@@ -82,7 +82,16 @@ class DeepNeuralNetwork_Controller:
         x = tf.keras.layers.Dense(1)(x)
         model = tf.keras.Model(inputs=inputs, outputs=x)
         model.compile(optimizer="adam", loss="mse")
+
+        print("\n[MODEL SUMMARY]")
+        model.summary()
+
+        print("\n[MODEL WEIGHTS]")
+        for w in model.weights:
+            print(w.name, w.shape)
+
         return model
+
     
 # Register the custom layer
 tf.keras.utils.register_keras_serializable('Attention', Attention)
