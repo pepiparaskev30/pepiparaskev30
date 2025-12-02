@@ -115,6 +115,12 @@ FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = os.getenv("FEDERATION_URL_RECEIVE")
 
 
+BATCH_SIZE = 32
+MAX_STEPS_PER_EPOCH = 5        # at most 5 batches per epoch
+MAX_FISHER_BATCHES = 3         # at most 3 batches to estimate Fisher
+MIN_SAMPLES_FOR_TRAIN = 32     # don't train if less than one full batch
+
+
 class Gatherer:
     # Flag to check if the threads are ready to collect information
     ready_flag = True
@@ -951,19 +957,47 @@ def incremental_training(incremental_training_, target_resource, iterator):
     print()
     print("============ INCREMENTAL PROCEDURE =======================", flush=True)
 
-    # Load old model and obtain its weights
-    old_model_file = SAVED_MODELS_PATH + "/" + "model_" + target_resource + ".keras"
+    # Safety / control parameters
+    BATCH_SIZE = 32
+    MAX_STEPS_PER_EPOCH = 5        # at most 5 batches per epoch
+    MAX_FISHER_BATCHES = 3         # at most 3 batches for Fisher
+    MIN_SAMPLES_FOR_TRAIN = 32     # skip if not enough samples
+
+    # ⏱️ start timing the whole incremental step
+    total_start_time = time.time()
+
+    # --------------------------------------------------------
+    # 1) Build dataset for this incremental step
+    # --------------------------------------------------------
+    old_model_file = os.path.join(SAVED_MODELS_PATH, f"model_{target_resource}.keras")
     training_incremental_df = incremental_training_.df_reformulation(target_resource)
-    train_x, train_y, validation_x, validation_y = incremental_training_.train_test_split_(training_incremental_df, sequence_length)
+    train_x, train_y, validation_x, validation_y = incremental_training_.train_test_split_(
+        training_incremental_df, sequence_length
+    )
+
+    n_samples = len(train_x)
+    print(f"[DEBUG] target={target_resource}, n_samples before cap = {n_samples}", flush=True)
+
+    # Not enough data to train meaningfully
+    if n_samples < MIN_SAMPLES_FOR_TRAIN:
+        print(f"[INFO] Not enough samples for incremental training (len={n_samples}), skipping.", flush=True)
+        return iterator, target_resource, None
+
+    # Cap how many samples we use this round (prevents huge training times)
+    max_train_samples = BATCH_SIZE * MAX_STEPS_PER_EPOCH   # e.g. 32 * 5 = 160
+    if n_samples > max_train_samples:
+        print(f"[INFO] Too many samples ({n_samples}). Using only {max_train_samples} for this round.", flush=True)
+        idx = np.random.choice(n_samples, max_train_samples, replace=False)
+        train_x = train_x[idx]
+        train_y = train_y[idx]
+        n_samples = max_train_samples
 
     # Load the old model and apply weights
     incremental_model = load_keras_model(old_model_file, custom_objects={'Attention': Attention})
-    weights_file = WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5"
+    weights_file = os.path.join(WEIGHTS_PATH, f"{target_resource}_weights_{NODE_NAME}.weights.h5")
     incremental_model.save_weights(weights_file)
     print("weights saved", flush=True)
-    print()
     print("⏳ Waiting briefly before next step...", flush=True)
-    print()
     logging.info(f"model: {incremental_model} loaded")
 
     # Apply federated weights if they exist
@@ -971,8 +1005,10 @@ def incremental_training(incremental_training_, target_resource, iterator):
         if file_contains_word(FEDERATED_WEIGHTS_PATH_RECEIVE, target_resource):
             incremental_model = update_model_with_federated_weights(incremental_model, target_resource)
 
-    # Create dataset, set drop_remainder=True to ensure batch consistency
-    dataset_current_task = tf.data.Dataset.from_tensor_slices((train_x, train_y)).batch(32, drop_remainder=True)
+    # Create dataset AFTER possibly sub-sampling
+    dataset_current_task = tf.data.Dataset.from_tensor_slices(
+        (train_x, train_y)
+    ).batch(BATCH_SIZE, drop_remainder=True)
 
     # Optimizer for training
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
@@ -980,17 +1016,25 @@ def incremental_training(incremental_training_, target_resource, iterator):
     # Store the initial parameters (θ*)
     prev_params = get_params(incremental_model)
 
-    # Calculate steps per epoch (number of batches)
-    steps_per_epoch = len(train_x) // 32  # Ensure the steps match the dataset size
+    # Calculate steps per epoch (number of batches), but cap it
+    raw_steps = n_samples // BATCH_SIZE
+    steps_per_epoch = min(raw_steps, MAX_STEPS_PER_EPOCH)
+    print(f"[DEBUG] target={target_resource}, len(train_x)={n_samples}, "
+          f"raw_steps={raw_steps}, steps_per_epoch={steps_per_epoch}", flush=True)
 
-    # 🔹 EWC: compute Fisher ONCE per incremental training call (not per batch)
-    print("[EWC] Computing Fisher information once for this incremental step...", flush=True)
-    fisher = compute_fisher(incremental_model, dataset_current_task)
-    print("[EWC] Fisher computation finished.", flush=True)
+    # --------------------------------------------------------
+    # 2) EWC: compute Fisher ONCE on a small subset
+    # --------------------------------------------------------
+    print("[EWC] Computing Fisher information on a subset...", flush=True)
+    dataset_for_fisher = dataset_current_task.take(MAX_FISHER_BATCHES)
+    t_fish_start = time.time()
+    fisher = compute_fisher(incremental_model, dataset_for_fisher)
+    t_fish_end = time.time()
+    print(f"[EWC] Fisher computation finished in {t_fish_end - t_fish_start:.2f} seconds.", flush=True)
 
-    # ⏱️ start total incremental training timer (all epochs)
-    total_start_time = time.time()
-
+    # --------------------------------------------------------
+    # 3) Main training loop (epochs × capped steps)
+    # --------------------------------------------------------
     for epoch in range(epochs):
         epoch_num = epoch + 1
         batch_count = 0
@@ -1012,7 +1056,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
                     output = incremental_model(data)
                     loss = tf.keras.losses.mean_squared_error(target, output)
 
-                    # 🔹 EWC penalty reuses the SAME fisher each batch
+                    # EWC penalty reuses the SAME fisher each batch
                     ewc_loss = loss + ewc_penalty(
                         get_params(incremental_model),
                         prev_params,
@@ -1039,7 +1083,9 @@ def incremental_training(incremental_training_, target_resource, iterator):
         # Update params after each epoch
         prev_params = update_params(incremental_model, prev_params)
 
-    # ⏱️ end total incremental training timer (all epochs)
+    # --------------------------------------------------------
+    # 4) End-to-end time for incremental training step
+    # --------------------------------------------------------
     total_duration = time.time() - total_start_time
     append_total_incremental_time_to_csv(
         EVALUATION_PATH,
@@ -1048,13 +1094,20 @@ def incremental_training(incremental_training_, target_resource, iterator):
         duration_seconds=total_duration
     )
 
-    # Save the model and weights after fine-tuning
-    incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5")
-    incremental_model.save(SAVED_MODELS_PATH + "/" + f"model__{target_resource}.keras")
+    # --------------------------------------------------------
+    # 5) Save model, run inference, log metrics
+    # --------------------------------------------------------
+    incremental_model.save_weights(os.path.join(
+        WEIGHTS_PATH, f"{target_resource}_weights_{NODE_NAME}.weights.h5"
+    ))
+    incremental_model.save(os.path.join(
+        SAVED_MODELS_PATH, f"model__{target_resource}.keras"
+    ))
     weights_list = [arr.tolist() for arr in incremental_model.get_weights()]
 
-    # Save the model weights to a JSON file for federated learning
-    json_filepath = f"{FEDERATED_WEIGHTS_PATH_SEND_CLIENT}/{target_resource}_weights_{NODE_NAME}.json"
+    json_filepath = os.path.join(
+        FEDERATED_WEIGHTS_PATH_SEND_CLIENT, f"{target_resource}_weights_{NODE_NAME}.json"
+    )
     save_weights_to_json(weights_list, json_filepath)
 
     logging.info(f"fine-tuned model: fine_tuned_model model_{target_resource}.keras saved")
@@ -1068,7 +1121,6 @@ def incremental_training(incremental_training_, target_resource, iterator):
     predictions = incremental_model.predict(validation_data[0])
     inference_latency = time.time() - t0
 
-    # Log incremental inference latency
     append_latency_to_csv(
         EVALUATION_PATH,
         target_resource,
@@ -1076,12 +1128,10 @@ def incremental_training(incremental_training_, target_resource, iterator):
         latency_seconds=inference_latency
     )
 
-    # Calculate performance metrics
     mse = calculate_mse(predictions, validation_data[1])
     rmse = calculate_rmse(mse)
     r2_score = calculate_r2_score(validation_data[1], predictions)
 
-    # Log and save the metrics
     append_to_csv(EVALUATION_PATH, target_resource, mse, rmse, r2_score)
     print("metrics exposed, incremental model and fine-tuned weights saved")
 
