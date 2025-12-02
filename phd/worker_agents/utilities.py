@@ -650,15 +650,15 @@ def trend_of_values(lst):
 
 def calculate_convergence(path_, target):
     """
-    Reads all metrics_*{target}.csv files in EVALUATION_PATH and computes
-    the trend for MSE, RMSE and R2.
+    Διαβάζει όλα τα metrics_*{target}.csv αρχεία στο EVALUATION_PATH
+    και υπολογίζει τάση για MSE, RMSE, R2.
 
-    It ignores non-metric CSVs (e.g. memory_cpu.csv) and non-numeric fields.
+    Αγνοεί αρχεία όπως memory_cpu.csv και μη αριθμητικές τιμές.
     """
-    data_list, mse_list, rmse_list, r2_list = [], [], [], []
+    mse_list, rmse_list, r2_list = [], [], []
 
     for file_ in os.listdir(path_):
-        # Only consider metric files like: metrics_cpu.csv, metrics_cpu_FDL.csv, etc.
+        # ΜΟΝΟ αρχεία που ξεκινάνε με metrics_ (π.χ. metrics_cpu.csv)
         if not file_.startswith("metrics_"):
             continue
         if not file_.endswith(f"{target}.csv"):
@@ -668,7 +668,7 @@ def calculate_convergence(path_, target):
         with open(full_path, "r") as csv_file:
             csv_reader = csv.DictReader(csv_file)
             for row in csv_reader:
-                # row should look like {"MSE": "...", "RMSE": "...", "R2": "..."}
+                # Περιμένουμε στήλες MSE, RMSE, R2
                 if "MSE" in row and row["MSE"]:
                     try:
                         mse_list.append(float(row["MSE"]))
@@ -685,7 +685,7 @@ def calculate_convergence(path_, target):
                     except ValueError:
                         pass
 
-    # If we don't have enough data yet, return neutral trends
+
     if not mse_list or not rmse_list or not r2_list:
         return 0, 0, 0
 
