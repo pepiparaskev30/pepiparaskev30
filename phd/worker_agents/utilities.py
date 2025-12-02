@@ -977,11 +977,16 @@ def incremental_training(incremental_training_, target_resource, iterator):
     # Optimizer for training
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
 
-    # Store the initial parameters
+    # Store the initial parameters (θ*)
     prev_params = get_params(incremental_model)
 
     # Calculate steps per epoch (number of batches)
     steps_per_epoch = len(train_x) // 32  # Ensure the steps match the dataset size
+
+    # 🔹 EWC: compute Fisher ONCE per incremental training call (not per batch)
+    print("[EWC] Computing Fisher information once for this incremental step...", flush=True)
+    fisher = compute_fisher(incremental_model, dataset_current_task)
+    print("[EWC] Fisher computation finished.", flush=True)
 
     # ⏱️ start total incremental training timer (all epochs)
     total_start_time = time.time()
@@ -995,6 +1000,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
         append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
                              phase="incremental_epoch_start", rss_mb=rss_start,
                              tf_current_mb=tf_curr_start, tf_peak_mb=tf_peak_start)
+
         try:
             for data, target in dataset_current_task:
                 # Ensure data has a batch dimension if it's missing
@@ -1005,8 +1011,14 @@ def incremental_training(incremental_training_, target_resource, iterator):
                 with tf.GradientTape() as tape:
                     output = incremental_model(data)
                     loss = tf.keras.losses.mean_squared_error(target, output)
-                    fisher = compute_fisher(incremental_model, dataset_current_task)
-                    ewc_loss = loss + ewc_penalty(get_params(incremental_model), prev_params, fisher, fisher_multiplier)
+
+                    # 🔹 EWC penalty reuses the SAME fisher each batch
+                    ewc_loss = loss + ewc_penalty(
+                        get_params(incremental_model),
+                        prev_params,
+                        fisher,
+                        fisher_multiplier
+                    )
 
                 grads = tape.gradient(ewc_loss, incremental_model.trainable_variables)
                 optimizer.apply_gradients(zip(grads, incremental_model.trainable_variables))
@@ -1024,6 +1036,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
                              phase="incremental_epoch_end", rss_mb=rss_end,
                              tf_current_mb=tf_curr_end, tf_peak_mb=tf_peak_end)
 
+        # Update params after each epoch
         prev_params = update_params(incremental_model, prev_params)
 
     # ⏱️ end total incremental training timer (all epochs)
@@ -1048,7 +1061,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
     logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.h5 saved")
     logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.json saved")
 
-    # Perform validation and predictions (still measuring inference latency if you want it)
+    # Perform validation and predictions (still measuring inference latency)
     validation_data = (validation_x, validation_y)
 
     t0 = time.time()
@@ -1073,6 +1086,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
     print("metrics exposed, incremental model and fine-tuned weights saved")
 
     return iterator, target_resource, predictions
+
 
 def append_total_incremental_time_to_csv(evaluation_path, target, phase, duration_seconds):
     """
