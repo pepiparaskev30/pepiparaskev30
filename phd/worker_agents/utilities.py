@@ -151,6 +151,33 @@ class Gatherer:
         threading.Thread(target=Gatherer.flush_data).start()
         return
 
+def append_latency_to_csv(evaluation_path, target, phase, latency_seconds):
+    """
+    Append inference latency measurements to a CSV file.
+
+    - evaluation_path: base folder (EVALUATION_PATH)
+    - target: e.g. "cpu", "mem"
+    - phase: e.g. "incremental_inference"
+    - latency_seconds: float, elapsed time in seconds
+    """
+    file_path = os.path.join(evaluation_path, f"latency_{target}.csv")
+    fieldnames = ["timestamp", "target", "phase", "latency_seconds"]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # If file is empty, write header
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "target": target,
+            "phase": phase,
+            "latency_seconds": latency_seconds
+        })
+
+
 
 def get_process_memory_mb():
     """
@@ -960,6 +987,9 @@ def incremental_training(incremental_training_, target_resource, iterator):
     # Calculate steps per epoch (number of batches)
     steps_per_epoch = len(train_x) // 32  # Ensure the steps match the dataset size
 
+    # ⏱️ start total incremental training timer (all epochs)
+    total_start_time = time.time()
+
     for epoch in range(epochs):
         epoch_num = epoch + 1
         batch_count = 0
@@ -967,8 +997,8 @@ def incremental_training(incremental_training_, target_resource, iterator):
         rss_start = get_process_memory_mb()
         tf_curr_start, tf_peak_start = get_tf_cpu_memory_mb()
         append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
-                            phase="incremental_epoch_start", rss_mb=rss_start,
-                            tf_current_mb=tf_curr_start, tf_peak_mb=tf_peak_start)
+                             phase="incremental_epoch_start", rss_mb=rss_start,
+                             tf_current_mb=tf_curr_start, tf_peak_mb=tf_peak_start)
         try:
             for data, target in dataset_current_task:
                 # Ensure data has a batch dimension if it's missing
@@ -995,15 +1025,22 @@ def incremental_training(incremental_training_, target_resource, iterator):
         rss_end = get_process_memory_mb()
         tf_curr_end, tf_peak_end = get_tf_cpu_memory_mb()
         append_memory_to_csv(EVALUATION_PATH, target_resource, epoch_num,
-                            phase="incremental_epoch_end", rss_mb=rss_end,
-                            tf_current_mb=tf_curr_end, tf_peak_mb=tf_peak_end)
+                             phase="incremental_epoch_end", rss_mb=rss_end,
+                             tf_current_mb=tf_curr_end, tf_peak_mb=tf_peak_end)
 
         prev_params = update_params(incremental_model, prev_params)
 
-    # Save the model and weights after fine-tuning
-    #incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.h5")
-    incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5")
+    # ⏱️ end total incremental training timer (all epochs)
+    total_duration = time.time() - total_start_time
+    append_total_incremental_time_to_csv(
+        EVALUATION_PATH,
+        target_resource,
+        phase="incremental_training_total",
+        duration_seconds=total_duration
+    )
 
+    # Save the model and weights after fine-tuning
+    incremental_model.save_weights(WEIGHTS_PATH + "/" + f"{target_resource}_weights_{NODE_NAME}.weights.h5")
     incremental_model.save(SAVED_MODELS_PATH + "/" + f"model__{target_resource}.keras")
     weights_list = [arr.tolist() for arr in incremental_model.get_weights()]
 
@@ -1015,9 +1052,20 @@ def incremental_training(incremental_training_, target_resource, iterator):
     logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.h5 saved")
     logging.info(f"and the weights: fine_tuned_model_weights_{target_resource}.json saved")
 
-    # Perform validation and predictions
+    # Perform validation and predictions (still measuring inference latency if you want it)
     validation_data = (validation_x, validation_y)
+
+    t0 = time.time()
     predictions = incremental_model.predict(validation_data[0])
+    inference_latency = time.time() - t0
+
+    # Log incremental inference latency
+    append_latency_to_csv(
+        EVALUATION_PATH,
+        target_resource,
+        phase="incremental_inference",
+        latency_seconds=inference_latency
+    )
 
     # Calculate performance metrics
     mse = calculate_mse(predictions, validation_data[1])
@@ -1029,6 +1077,33 @@ def incremental_training(incremental_training_, target_resource, iterator):
     print("metrics exposed, incremental model and fine-tuned weights saved")
 
     return iterator, target_resource, predictions
+
+def append_total_incremental_time_to_csv(evaluation_path, target, phase, duration_seconds):
+    """
+    Append total incremental training time (all epochs together) to a CSV file.
+
+    - evaluation_path: base folder (EVALUATION_PATH)
+    - target: e.g. "cpu", "mem"
+    - phase: e.g. "incremental_training_total"
+    - duration_seconds: float, total elapsed time in seconds
+    """
+    file_path = os.path.join(evaluation_path, f"incremental_training_time_{target}.csv")
+    fieldnames = ["timestamp", "target", "phase", "duration_seconds"]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        # If file is empty, write the header
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "target": target,
+            "phase": phase,
+            "duration_seconds": duration_seconds
+        })
+
 
 
 def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
