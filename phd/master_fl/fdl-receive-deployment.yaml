@@ -5,7 +5,7 @@ metadata:
   labels:
     app: fed-master-receive
 spec:
-  replicas: 1  # Number of replicas for scaling
+  replicas: 1
   selector:
     matchLabels:
       app: fed-master-receive
@@ -15,14 +15,13 @@ spec:
         app: fed-master-receive
     spec:
       nodeSelector:
-        custom-label: pepi-master  # Matches the label on pepi-master
+        custom-name: pepi-master     # 👈 use the label that exists
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v22  # Replace with your Docker image name
+          image: pepi1989/fdl_master:v22
           ports:
             - containerPort: 8002
-
