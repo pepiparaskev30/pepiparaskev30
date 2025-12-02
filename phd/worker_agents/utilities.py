@@ -649,28 +649,51 @@ def trend_of_values(lst):
         return 0
 
 def calculate_convergence(path_, target):
-    data_list, mse_list, rmse_list, r2_list = [],[],[],[]
+    """
+    Reads all metrics_*{target}.csv files in EVALUATION_PATH and computes
+    the trend for MSE, RMSE and R2.
+
+    It ignores non-metric CSVs (e.g. memory_cpu.csv) and non-numeric fields.
+    """
+    data_list, mse_list, rmse_list, r2_list = [], [], [], []
+
     for file_ in os.listdir(path_):
-        if file_.endswith(f"{target}.csv"):
-            with open(path_+"/"+file_, "r") as csv_file:
-                csv_reader = csv.DictReader(csv_file)
-                for row in csv_reader:
-                    data_list.append(row)
-                for element in data_list:
-                    for k,v in element.items():
-                        if k == "MSE":
-                            mse_list.append(float(v))
-                        elif k =="RMSE": 
-                            rmse_list.append(float(v))
-                        else:
-                            r2_list.append(float(v))
-
-                trend_mse, trend_rmse, trend_r2 = trend_of_values(mse_list), trend_of_values(rmse_list), trend_of_values(r2_list)
-                return trend_mse, trend_rmse, trend_r2
-
-                
-        else:
+        # Only consider metric files like: metrics_cpu.csv, metrics_cpu_FDL.csv, etc.
+        if not file_.startswith("metrics_"):
             continue
+        if not file_.endswith(f"{target}.csv"):
+            continue
+
+        full_path = os.path.join(path_, file_)
+        with open(full_path, "r") as csv_file:
+            csv_reader = csv.DictReader(csv_file)
+            for row in csv_reader:
+                # row should look like {"MSE": "...", "RMSE": "...", "R2": "..."}
+                if "MSE" in row and row["MSE"]:
+                    try:
+                        mse_list.append(float(row["MSE"]))
+                    except ValueError:
+                        pass
+                if "RMSE" in row and row["RMSE"]:
+                    try:
+                        rmse_list.append(float(row["RMSE"]))
+                    except ValueError:
+                        pass
+                if "R2" in row and row["R2"]:
+                    try:
+                        r2_list.append(float(row["R2"]))
+                    except ValueError:
+                        pass
+
+    # If we don't have enough data yet, return neutral trends
+    if not mse_list or not rmse_list or not r2_list:
+        return 0, 0, 0
+
+    trend_mse  = trend_of_values(mse_list)
+    trend_rmse = trend_of_values(rmse_list)
+    trend_r2   = trend_of_values(r2_list)
+    return trend_mse, trend_rmse, trend_r2
+
 
 
 def count_frequency(tuple_):
