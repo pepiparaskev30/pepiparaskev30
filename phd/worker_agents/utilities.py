@@ -153,12 +153,7 @@ class Gatherer:
 
 def append_latency_to_csv(evaluation_path, target, phase, latency_seconds):
     """
-    Append inference latency measurements to a CSV file.
-
-    - evaluation_path: base folder (EVALUATION_PATH)
-    - target: e.g. "cpu", "mem"
-    - phase: e.g. "incremental_inference"
-    - latency_seconds: float, elapsed time in seconds
+    Append incremental inference latency to a CSV file.
     """
     file_path = os.path.join(evaluation_path, f"latency_{target}.csv")
     fieldnames = ["timestamp", "target", "phase", "latency_seconds"]
@@ -176,6 +171,7 @@ def append_latency_to_csv(evaluation_path, target, phase, latency_seconds):
             "phase": phase,
             "latency_seconds": latency_seconds
         })
+
 
 
 
