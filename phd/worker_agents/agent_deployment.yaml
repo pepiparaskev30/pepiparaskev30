@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: node-specific-app
+  labels:
+    app: node-info
 spec:
   replicas: 1
   selector:
@@ -12,16 +14,19 @@ spec:
       labels:
         app: node-info
     spec:
-      serviceAccountName: agent-sa  # just added
+      serviceAccountName: agent-sa
+      # 🔹 Schedule ONLY on the worker node "lab-cluster-worker"
       nodeSelector:
-        custom-label: test  # Matches the label on pepi-master
-      tolerations:
-        - key: "node-role.kubernetes.io/control-plane"
-          operator: "Exists"
-          effect: "NoSchedule"
+        kubernetes.io/hostname: lab-cluster-worker
+      # 🔹 You only need this toleration if you *also* want to run on control-plane.
+      #    It's harmless but not required for worker-only scheduling.
+      # tolerations:
+      #   - key: "node-role.kubernetes.io/control-plane"
+      #     operator: "Exists"
+      #     effect: "NoSchedule"
       containers:
         - name: name-node-container
-          image: pepi1989/revision-agent:v16  # Replace this with your correct image thuis is the image
+          image: pepi1989/revision-agent:v16   # your image
           imagePullPolicy: Always
           env:
             - name: POD_NAME
@@ -41,4 +46,4 @@ spec:
             - name: FEDERATION_URL_SEND
               value: "http://fed-master-service:8002/upload_weights"
             - name: FEDERATION_URL_RECEIVE
-              value: "http://fed-master-service:8002/global_model" 
+              value: "http://fed-master-service:8002/global_model"
