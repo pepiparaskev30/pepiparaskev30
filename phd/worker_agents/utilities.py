@@ -649,12 +649,7 @@ def trend_of_values(lst):
         return 0
 
 def calculate_convergence(path_, target):
-    """
-    Διαβάζει όλα τα metrics_*{target}.csv αρχεία στο EVALUATION_PATH
-    και υπολογίζει τάση για MSE, RMSE, R2.
-
-    Αγνοεί αρχεία όπως memory_cpu.csv και μη αριθμητικές τιμές.
-    """
+    print(f"[DEBUG] NEW calculate_convergence called for target={target}", flush=True)
     mse_list, rmse_list, r2_list = [], [], []
 
     for file_ in os.listdir(path_):
@@ -663,7 +658,7 @@ def calculate_convergence(path_, target):
             continue
         if not file_.endswith(f"{target}.csv"):
             continue
-
+ 
         full_path = os.path.join(path_, file_)
         with open(full_path, "r") as csv_file:
             csv_reader = csv.DictReader(csv_file)
