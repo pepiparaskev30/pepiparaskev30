@@ -815,6 +815,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                     print("[INFO] Post-prediction pause done. Continuing...", flush=True)
                     time.sleep(2)
 
+
                 metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
                 most_frequent_value = count_frequency(metrics_convergence)
 
