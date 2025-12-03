@@ -81,4 +81,11 @@ class GRU_Controller:
         model = tf.keras.Model(inputs=inputs, outputs=outputs)
         model.compile(optimizer="adam", loss="mse")
         
+        print("\n[MODEL SUMMARY]")
+        model.summary()
+
+        print("\n[MODEL WEIGHTS]")
+        for w in model.weights:
+            print(w.name, w.shape)
+        
         return model
