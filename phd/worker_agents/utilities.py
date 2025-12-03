@@ -961,6 +961,7 @@ def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame
     
     return features_cpu, features_ram
 
+    
 def incremental_training(incremental_training_, target_resource, iterator):
     print()
     print("============ INCREMENTAL PROCEDURE =======================", flush=True)
@@ -969,7 +970,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
     BATCH_SIZE = 32
     MAX_STEPS_PER_EPOCH = 5        # at most 5 batches per epoch
     MAX_FISHER_BATCHES = 3         # at most 3 batches for Fisher
-    MIN_SAMPLES_FOR_TRAIN = 32     # skip if not enough samples
+    MIN_SAMPLES_FOR_TRAIN = 32     # now used only for WARN, not to skip
 
     # ⏱️ start timing the whole incremental step
     total_start_time = time.time()
@@ -986,10 +987,15 @@ def incremental_training(incremental_training_, target_resource, iterator):
     n_samples = len(train_x)
     print(f"[DEBUG] target={target_resource}, n_samples before cap = {n_samples}", flush=True)
 
-    # Not enough data to train meaningfully
-    if n_samples < MIN_SAMPLES_FOR_TRAIN:
-        print(f"[INFO] Not enough samples for incremental training (len={n_samples}), skipping.", flush=True)
+    # ✅ only skip if we literally have 0 samples
+    if n_samples == 0:
+        print(f"[INFO] No samples at all for {target_resource}, skipping this round.", flush=True)
         return iterator, target_resource, None
+
+    # ✅ if < MIN_SAMPLES_FOR_TRAIN, we still continue, just warn
+    if n_samples < MIN_SAMPLES_FOR_TRAIN:
+        print(f"[WARN] Only {n_samples} samples for {target_resource} "
+              f"(less than {MIN_SAMPLES_FOR_TRAIN}). Training anyway with small batch.", flush=True)
 
     # Cap how many samples we use this round (prevents huge training times)
     max_train_samples = BATCH_SIZE * MAX_STEPS_PER_EPOCH   # e.g. 32 * 5 = 160
@@ -1013,10 +1019,10 @@ def incremental_training(incremental_training_, target_resource, iterator):
         if file_contains_word(FEDERATED_WEIGHTS_PATH_RECEIVE, target_resource):
             incremental_model = update_model_with_federated_weights(incremental_model, target_resource)
 
-    # Create dataset AFTER possibly sub-sampling
+    # ✅ keep partial batches (do NOT drop them)
     dataset_current_task = tf.data.Dataset.from_tensor_slices(
         (train_x, train_y)
-    ).batch(BATCH_SIZE, drop_remainder=True)
+    ).batch(BATCH_SIZE, drop_remainder=False)
 
     # Optimizer for training
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
@@ -1024,8 +1030,8 @@ def incremental_training(incremental_training_, target_resource, iterator):
     # Store the initial parameters (θ*)
     prev_params = get_params(incremental_model)
 
-    # Calculate steps per epoch (number of batches), but cap it
-    raw_steps = n_samples // BATCH_SIZE
+    # ✅ ensure at least 1 step per epoch
+    raw_steps = max(1, int(np.ceil(n_samples / BATCH_SIZE)))
     steps_per_epoch = min(raw_steps, MAX_STEPS_PER_EPOCH)
     print(f"[DEBUG] target={target_resource}, len(train_x)={n_samples}, "
           f"raw_steps={raw_steps}, steps_per_epoch={steps_per_epoch}", flush=True)
@@ -1144,6 +1150,7 @@ def incremental_training(incremental_training_, target_resource, iterator):
     print("metrics exposed, incremental model and fine-tuned weights saved")
 
     return iterator, target_resource, predictions
+
 
 
 def append_total_incremental_time_to_csv(evaluation_path, target, phase, duration_seconds):
