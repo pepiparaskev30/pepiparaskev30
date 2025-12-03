@@ -15,13 +15,13 @@ spec:
         app: fed-master-receive
     spec:
       nodeSelector:
-        custom-name: pepi-master     # 👈 use the label that exists
+        custom-name: pepi-master    # 👈 use the label that exists
       tolerations:
         - key: "node-role.kubernetes.io/control-plane"
           operator: "Exists"
           effect: "NoSchedule"
       containers:
         - name: fed-master-receive
-          image: pepi1989/fdl_master:v22
+          image: docker.io/pepi1989/fdl_master:v22
           ports:
             - containerPort: 8002
