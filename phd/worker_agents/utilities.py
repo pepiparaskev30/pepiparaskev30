@@ -68,7 +68,8 @@ import requests
 import logging
 import tensorflow as tf
 from sklearn.impute import SimpleImputer
-from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
+#from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
+from GRU_Controller_training import GRU_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
 import os
@@ -763,7 +764,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
 
         if iterator == 0:
             # === INITIAL TRAINING ONLY ONCE ===
-            init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
+            init_training_ = GRU_Controller(df, features_cpu, features_ram)
 
             for target_resource in targets:
                 init_training_based_on_resource(init_training_, target_resource, early_stopping)
@@ -783,7 +784,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
         # From here on: INCREMENTAL + FEDERATED logic (iterator != 0)
         # ============================================================
         print("🌀 Incremental procedure started", flush=True)
-        incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
+        incremental_training_ = GRU_Controller(updated_df, features_cpu, features_ram)
 
         for i in range(0, 3):
             for target_resource in targets:
@@ -961,7 +962,7 @@ def find_resource_features(causality_cpu, causality_ram, updated_df:pd.DataFrame
     
     return features_cpu, features_ram
 
-    
+
 def incremental_training(incremental_training_, target_resource, iterator):
     print()
     print("============ INCREMENTAL PROCEDURE =======================", flush=True)

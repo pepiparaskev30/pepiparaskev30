@@ -32,6 +32,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy all Python scripts and other necessary files into the container in a single COPY command
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
+    GRU_Controller_training.py \
     elasticweightconsolidation.py evaluation_metrics.py /app/
 
 
