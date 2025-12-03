@@ -1165,7 +1165,6 @@ def append_total_incremental_time_to_csv(evaluation_path, target, phase, duratio
         })
 
 
-
 def append_to_csv(EVALUATION_PATH,target,mse, rmse, r2):
     file_path = EVALUATION_PATH+"/"+f"metrics_{target}.csv"
     with open(file_path, 'a', newline='') as csvfile:

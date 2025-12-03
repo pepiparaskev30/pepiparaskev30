@@ -12,6 +12,8 @@ SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 1)) # In Seconds
 
 # Main function to start the processes
 if __name__ == "__main__":
+    print("Welcome to the AI-ORCESTRATOR !")
+    time.sleep(10)
 
     Gatherer.start_thread()
 
