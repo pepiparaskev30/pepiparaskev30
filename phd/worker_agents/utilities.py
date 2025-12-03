@@ -792,6 +792,12 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                     incremental_training_, target_resource, iterator
                 )
 
+                # ⛔ If incremental_training skipped (not enough samples), predictions_ is None
+                if predictions_ is None:
+                    print(f"[INFO] No predictions for {target_resource} this round "
+                        f"(not enough samples). Skipping analysis and FL.", flush=True)
+                    continue  # go to next target_resource
+
                 if i % 2 == 0:
                     print(f"🧠 Predictions for {target_resource}", flush=True)
                     predictions_final_ = predictions_.tolist()
@@ -814,6 +820,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
                     predictions_final_ = []
                     print("[INFO] Post-prediction pause done. Continuing...", flush=True)
                     time.sleep(2)
+
 
 
                 metrics_convergence = calculate_convergence(EVALUATION_PATH, target_resource)
