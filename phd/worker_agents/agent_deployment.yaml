@@ -26,7 +26,7 @@ spec:
       #     effect: "NoSchedule"
       containers:
         - name: name-node-container
-          image: pepi1989/revision-agent:v25   # your image new image
+          image: pepi1989/revision-agent:v26   # your image new image
           imagePullPolicy: Always
           env:
             - name: POD_NAME

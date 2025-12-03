@@ -48,7 +48,6 @@ from datetime import datetime
 import pandas as pd
 import time,os, json
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-
 import numpy as np
 import psutil
 import csv
@@ -68,8 +67,8 @@ import requests
 import logging
 import tensorflow as tf
 from sklearn.impute import SimpleImputer
-#from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
-from GRU_Controller_training import GRU_Controller, Attention
+from LSTM_attention_model_training import DeepNeuralNetwork_Controller, Attention
+#from GRU_Controller_training import GRU_Controller, Attention
 from elasticweightconsolidation import compute_fisher, ewc_penalty, get_params, update_params
 from evaluation_metrics import calculate_mse, calculate_rmse, calculate_r2_score,  save_metrics
 import os
@@ -114,6 +113,8 @@ FEDERATED_WEIGHTS_PATH_SEND_CLIENT = "./federated_send_results"
 EVALUATION_PATH = "./evaluation_results"
 FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = os.getenv("FEDERATION_URL_RECEIVE")
+POD_NAME = os.getenv("POD_NAME")
+POD_NAMESPACE = os.getenv("POD_NAMESPACE")
 
 
 BATCH_SIZE = 32
@@ -157,6 +158,77 @@ class Gatherer:
 
         threading.Thread(target=Gatherer.flush_data).start()
         return
+
+
+def append_pod_overhead_to_csv(evaluation_path, cpu_cores, memory_mb, phase="runtime"):
+    """
+    Append agent pod CPU & memory to a CSV file.
+
+    CSV columns:
+    timestamp, namespace, pod, container, phase, cpu_cores, memory_mb
+    """
+    file_path = os.path.join(evaluation_path, "agent_pod_overhead.csv")
+    fieldnames = ["timestamp", "namespace", "pod", "container",
+                  "phase", "cpu_cores", "memory_mb"]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "namespace": POD_NAMESPACE,
+            "pod": POD_NAME,
+            "container": "name-node-container",
+            "phase": phase,
+            "cpu_cores": cpu_cores,
+            "memory_mb": memory_mb
+        })
+
+
+def get_agent_pod_cpu_mem():
+    """
+    Query Prometheus for this pod's CPU and memory usage.
+
+    Returns:
+        (cpu_cores, memory_mb) or (None, None) if not found.
+    """
+    pod = POD_NAME
+    ns = POD_NAMESPACE
+    container = "name-node-container"  # your container name in the Deployment
+
+    # CPU in "cores" as rate over 1 minute
+    cpu_query = (
+        f'rate(container_cpu_usage_seconds_total{{'
+        f'namespace="{ns}",pod="{pod}",container="{container}"}}[1m])'
+    )
+
+    # Memory in bytes (working set)
+    mem_query = (
+        f'container_memory_working_set_bytes{{'
+        f'namespace="{ns}",pod="{pod}",container="{container}"}}'
+    )
+
+    cpu_results = query_metric(PROMETHEUS_URL, cpu_query)
+    mem_results = query_metric(PROMETHEUS_URL, mem_query)
+
+    if not cpu_results or not mem_results:
+        print("[WARN] No CPU or memory metrics found for this pod in Prometheus.", flush=True)
+        return None, None
+
+    # Take the first time series (typical case: one per container)
+    try:
+        cpu_cores = float(cpu_results[0]["value"][1])  # cores
+        mem_bytes = float(mem_results[0]["value"][1])
+        mem_mb = mem_bytes / 1024**2
+    except Exception as e:
+        print(f"[ERROR] Failed to parse Prometheus result: {e}", flush=True)
+        return None, None
+
+    return cpu_cores, mem_mb
+
 
 def append_latency_to_csv(evaluation_path, target, phase, latency_seconds):
     """
@@ -764,7 +836,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
 
         if iterator == 0:
             # === INITIAL TRAINING ONLY ONCE ===
-            init_training_ = GRU_Controller(df, features_cpu, features_ram)
+            init_training_ = DeepNeuralNetwork_Controller(df, features_cpu, features_ram)
 
             for target_resource in targets:
                 init_training_based_on_resource(init_training_, target_resource, early_stopping)
@@ -784,7 +856,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
         # From here on: INCREMENTAL + FEDERATED logic (iterator != 0)
         # ============================================================
         print("🌀 Incremental procedure started", flush=True)
-        incremental_training_ = GRU_Controller(updated_df, features_cpu, features_ram)
+        incremental_training_ = DeepNeuralNetwork_Controller(updated_df, features_cpu, features_ram)
 
         for i in range(0, 3):
             for target_resource in targets:
@@ -967,6 +1039,15 @@ def incremental_training(incremental_training_, target_resource, iterator):
     print()
     print("============ INCREMENTAL PROCEDURE =======================", flush=True)
 
+    # 🔹 Measure pod overhead BEFORE this IL round
+    cpu_cores, mem_mb = get_agent_pod_cpu_mem()
+    if cpu_cores is not None:
+        append_pod_overhead_to_csv(
+            EVALUATION_PATH,
+            cpu_cores,
+            mem_mb,
+            phase=f"incremental_start_{target_resource}"
+        )
     # Safety / control parameters
     BATCH_SIZE = 32
     MAX_STEPS_PER_EPOCH = 5        # at most 5 batches per epoch
@@ -1149,6 +1230,15 @@ def incremental_training(incremental_training_, target_resource, iterator):
 
     append_to_csv(EVALUATION_PATH, target_resource, mse, rmse, r2_score)
     print("metrics exposed, incremental model and fine-tuned weights saved")
+
+    cpu_cores, mem_mb = get_agent_pod_cpu_mem()
+    if cpu_cores is not None:
+        append_pod_overhead_to_csv(
+            EVALUATION_PATH,
+            cpu_cores,
+            mem_mb,
+            phase=f"incremental_end_{target_resource}"
+        )
 
     return iterator, target_resource, predictions
 
