@@ -115,6 +115,8 @@ FEDERATION_URL_SEND = os.getenv("FEDERATION_URL_SEND")
 FEDERATION_URL_RECEIVE = os.getenv("FEDERATION_URL_RECEIVE")
 POD_NAME = os.getenv("POD_NAME")
 POD_NAMESPACE = os.getenv("POD_NAMESPACE")
+# Namespace where Prometheus stack is deployed
+MONITORING_NAMESPACE = os.getenv("MONITORING_NAMESPACE", "monitoring")
 
 
 BATCH_SIZE = 32
@@ -122,6 +124,26 @@ MAX_STEPS_PER_EPOCH = 5        # at most 5 batches per epoch
 MAX_FISHER_BATCHES = 3         # at most 3 batches to estimate Fisher
 MIN_SAMPLES_FOR_TRAIN = 32     # don't train if less than one full batch
 
+# Namespace where your monitoring stack runs.
+# If everything is in "default", change this or set env MONITORING_NAMESPACE=default.
+MONITORING_NAMESPACE = os.getenv("MONITORING_NAMESPACE", "monitoring")
+
+PROM_STACK_PODS = [
+    {"pod": "alertmanager-main-0",                  "role": "alertmanager"},
+    {"pod": "alertmanager-main-1",                  "role": "alertmanager"},
+    {"pod": "alertmanager-main-2",                  "role": "alertmanager"},
+    {"pod": "blackbox-exporter-5d75fcc56b-2hfvs",   "role": "blackbox-exporter"},
+    {"pod": "grafana-54b8dccbf6-s8lwm",             "role": "grafana"},
+    {"pod": "kube-state-metrics-67bc5d6db8-klgz7",  "role": "kube-state-metrics"},
+    {"pod": "node-exporter-fng2j",                  "role": "node-exporter"},
+    {"pod": "node-exporter-j7k68",                  "role": "node-exporter"},
+    {"pod": "node-exporter-p66lq",                  "role": "node-exporter"},
+    {"pod": "prometheus-adapter-6c5fcc994f-5r9v4",  "role": "prometheus-adapter"},
+    {"pod": "prometheus-adapter-6c5fcc994f-7hqkw",  "role": "prometheus-adapter"},
+    {"pod": "prometheus-k8s-0",                     "role": "prometheus"},
+    {"pod": "prometheus-k8s-1",                     "role": "prometheus"},
+    {"pod": "prometheus-operator-56557b6f7c-4srkb", "role": "prometheus-operator"},
+]
 
 class Gatherer:
     # Flag to check if the threads are ready to collect information
@@ -132,12 +154,24 @@ class Gatherer:
     # Amount of time to wait before starting a new thread
     wait_time = int(os.getenv('WAIT_TIME', '15'))
 
-    # Start the threads
+    @staticmethod
     def start_thread():
-        threading.Thread(target=Gatherer.flush_data).start()
+        """
+        Start the main data-flushing thread AND the monitoring-overhead thread.
+        Call this once when the agent starts.
+        """
+        # Thread that handles your IL/FL data pipeline
+        threading.Thread(target=Gatherer.flush_data, daemon=True).start()
 
-    # Start a thread and when it finishes, start another one
+        # Thread that periodically measures Prometheus / exporters / Grafana overhead
+        start_monitoring_overhead_thread()
+
+    @staticmethod
     def flush_data():
+        """
+        Start a thread and when it finishes, start another one
+        (as in your original implementation).
+        """
         global iterator
         start_time = time.time()
         N = Gatherer.prometheus_data_queue.qsize()
@@ -156,8 +190,22 @@ class Gatherer:
         if sum_time < Gatherer.wait_time:
             time.sleep(Gatherer.wait_time - sum_time)
 
-        threading.Thread(target=Gatherer.flush_data).start()
+        # Schedule next cycle
+        threading.Thread(target=Gatherer.flush_data, daemon=True).start()
         return
+
+
+def start_monitoring_overhead_thread():
+    """
+    Background thread that periodically samples Prometheus / monitoring pods
+    and appends their CPU & memory usage into monitoring_stack_overhead.csv.
+    """
+    def _loop():
+        while True:
+            collect_monitoring_stack_overhead()
+            time.sleep(60)   # sample every 60 seconds (tune as you like)
+
+    threading.Thread(target=_loop, daemon=True).start()
 
 
 def append_pod_overhead_to_csv(evaluation_path, cpu_cores, memory_mb, phase="runtime"):
@@ -186,6 +234,86 @@ def append_pod_overhead_to_csv(evaluation_path, cpu_cores, memory_mb, phase="run
             "cpu_cores": cpu_cores,
             "memory_mb": memory_mb
         })
+
+def append_component_overhead_to_csv(
+    evaluation_path,
+    component,
+    namespace,
+    pod,
+    container,
+    phase,
+    cpu_cores,
+    memory_mb
+):
+    """
+    Append CPU & memory for any component (agent, Prometheus, node-exporter, etc.)
+    to a CSV file.
+
+    CSV columns:
+    timestamp, component, namespace, pod, container, phase, cpu_cores, memory_mb
+    """
+    file_path = os.path.join(evaluation_path, "components_overhead.csv")
+    fieldnames = [
+        "timestamp", "component", "namespace", "pod",
+        "container", "phase", "cpu_cores", "memory_mb"
+    ]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "component": component,
+            "namespace": namespace,
+            "pod": pod,
+            "container": container,
+            "phase": phase,
+            "cpu_cores": cpu_cores,
+            "memory_mb": memory_mb
+        })
+
+
+def get_pod_cpu_mem(namespace, pod, container):
+    """
+    Query Prometheus for a specific pod's CPU and memory usage.
+
+    Returns:
+        (cpu_cores, memory_mb) or (None, None) if not found.
+    """
+    # CPU in "cores" as rate over 1 minute
+    cpu_query = (
+        f'rate(container_cpu_usage_seconds_total{{'
+        f'namespace="{namespace}",pod="{pod}",container="{container}"}}[1m])'
+    )
+
+    # Memory in bytes (working set)
+    mem_query = (
+        f'container_memory_working_set_bytes{{'
+        f'namespace="{namespace}",pod="{pod}",container="{container}"}}'
+    )
+
+    cpu_results = query_metric(PROMETHEUS_URL, cpu_query)
+    mem_results = query_metric(PROMETHEUS_URL, mem_query)
+
+    if not cpu_results or not mem_results:
+        print(f"[WARN] No CPU or memory metrics found for "
+              f"{namespace}/{pod}/{container} in Prometheus.", flush=True)
+        return None, None
+
+    try:
+        cpu_cores = float(cpu_results[0]["value"][1])   # cores
+        mem_bytes = float(mem_results[0]["value"][1])   # bytes
+        mem_mb = mem_bytes / 1024**2
+    except Exception as e:
+        print(f"[ERROR] Failed to parse Prometheus result for "
+              f"{namespace}/{pod}/{container}: {e}", flush=True)
+        return None, None
+
+    return cpu_cores, mem_mb
+
 
 
 def get_agent_pod_cpu_mem():
@@ -327,6 +455,46 @@ def get_node_ip_from_name(node_name):
 # ----------------------------------------------------------------------
 # Prometheus metric querying helpers (instance-based)
 # ----------------------------------------------------------------------
+def get_pod_cpu_mem_aggregated(namespace, pod):
+    """
+    Aggregate CPU (cores) and memory (MB) usage for a given pod
+    by summing across all its containers, using Prometheus.
+
+    Returns:
+        (cpu_cores, memory_mb)  or  (None, None) on failure.
+    """
+    # CPU: sum over all containers (rate over 1m)
+    cpu_query = (
+        'sum by (pod) (rate(container_cpu_usage_seconds_total{'
+        f'namespace="{namespace}",pod="{pod}",image!=""}}[1m]))'
+    )
+
+    # Memory: sum working set over all containers
+    mem_query = (
+        'sum by (pod) (container_memory_working_set_bytes{'
+        f'namespace="{namespace}",pod="{pod}",image!=""}})'
+    )
+
+    cpu_results = query_metric(PROMETHEUS_URL, cpu_query)
+    mem_results = query_metric(PROMETHEUS_URL, mem_query)
+
+    if not cpu_results or not mem_results:
+        print(f"[MON-OVERHEAD][WARN] No metrics for pod={pod} ns={namespace}", flush=True)
+        return None, None
+
+    try:
+        cpu_cores = float(cpu_results[0]["value"][1])
+        mem_bytes = float(mem_results[0]["value"][1])
+        mem_mb = mem_bytes / 1024**2
+    except Exception as e:
+        print(f"[MON-OVERHEAD][ERROR] Failed to parse Prometheus results for pod={pod}: {e}", flush=True)
+        return None, None
+
+    return cpu_cores, mem_mb
+
+
+
+
 def query_metric(prometheus_url, promql_query):
     """Run an instant query against Prometheus and return the 'result' list."""
     encoded_query = urllib.parse.quote(promql_query)
@@ -345,6 +513,83 @@ def query_metric(prometheus_url, promql_query):
     except requests.exceptions.RequestException as e:
         print(f"Request failed: {e}", flush=True)
     return []
+
+def append_monitoring_pod_overhead_to_csv(
+    evaluation_path,
+    namespace,
+    pod,
+    role,
+    cpu_cores,
+    memory_mb,
+    phase="runtime"
+):
+    """
+    Append a single row describing monitoring pod CPU & memory to CSV.
+
+    CSV: monitoring_stack_overhead.csv
+    Columns:
+        timestamp, namespace, pod, role, phase, cpu_cores, memory_mb
+    """
+    os.makedirs(evaluation_path, exist_ok=True)
+    file_path = os.path.join(evaluation_path, "monitoring_stack_overhead.csv")
+
+    fieldnames = [
+        "timestamp", "namespace", "pod", "role",
+        "phase", "cpu_cores", "memory_mb"
+    ]
+
+    with open(file_path, 'a', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        if csvfile.tell() == 0:
+            writer.writeheader()
+
+        writer.writerow({
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            "namespace": namespace,
+            "pod": pod,
+            "role": role,
+            "phase": phase,
+            "cpu_cores": cpu_cores,
+            "memory_mb": memory_mb
+        })
+
+
+
+def collect_monitoring_stack_overhead(evaluation_path=EVALUATION_PATH):
+    """
+    Collect CPU & memory usage for all Prometheus / monitoring-related pods
+    and append them to monitoring_stack_overhead.csv.
+
+    Call this periodically (e.g., every 60s) from a thread, cron, or main loop.
+    """
+    for item in PROM_STACK_PODS:
+        pod_name = item["pod"]
+        role = item["role"]
+
+        cpu_cores, mem_mb = get_pod_cpu_mem_aggregated(
+            namespace=MONITORING_NAMESPACE,
+            pod=pod_name
+        )
+
+        if cpu_cores is None:
+            continue
+
+        append_monitoring_pod_overhead_to_csv(
+            evaluation_path=evaluation_path,
+            namespace=MONITORING_NAMESPACE,
+            pod=pod_name,
+            role=role,
+            cpu_cores=cpu_cores,
+            memory_mb=mem_mb
+        )
+
+        print(
+            f"[MON-OVERHEAD] {pod_name} ({role}) → "
+            f"CPU={cpu_cores:.4f} cores, MEM={mem_mb:.2f} MB",
+            flush=True
+        )
+
 
 
 def get_instance_for_node(node_name, prometheus_url=PROMETHEUS_URL):
