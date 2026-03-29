@@ -152,7 +152,7 @@ class Gatherer:
     prometheus_data_queue = Queue()
 
     # Amount of time to wait before starting a new thread
-    wait_time = int(os.getenv('WAIT_TIME', '15'))
+    wait_time = int(os.getenv('WAIT_TIME', '5'))
 
     @staticmethod
     def start_thread():
@@ -668,46 +668,41 @@ def get_node_load_average(instance):
         return float(results[0]["value"][1])
     return 0.0
 
-
-def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
+def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL, duration=30, interval=5):
     """
-    Collect a snapshot of CPU, memory, network RX/TX and load1
-    for the given node name, using Prometheus instance label.
-
-    NOTE: despite the name, this currently returns a *single* timestamp
-    and first value per metric, as expected by data_formulation().
+    Collect multiple snapshots for the given node over `duration` seconds.
+    Example: duration=30, interval=5 -> about 6 samples.
     """
     instance = get_instance_for_node(node_name, prometheus_url)
     if not instance:
         print(f"Could not resolve instance for node: {node_name}", flush=True)
-        return
-
-    # CPU: total cores used (all modes except idle) for this instance
-    cpu_query = (
-        f'sum(irate(node_cpu_seconds_total{{mode!="idle",'
-        f'instance="{instance}"}}[1m]))'
-    )
+        return None
 
     rows = []
+    end_time = time.time() + duration
 
-    cpu_results = query_metric(prometheus_url, cpu_query)
-    cpu_value = float(cpu_results[0]["value"][1]) if cpu_results else 0.0
-    memory_value = get_memory_usage(instance)
-    netw_receive_value = get_network_receive_rate(instance)
-    netw_transmit_value = get_network_transmit_rate(instance)
-    load_value = get_node_load_average(instance)
+    while time.time() < end_time:
+        cpu_query = (
+            f'sum(irate(node_cpu_seconds_total{{mode!="idle",instance="{instance}"}}[1m]))'
+        )
 
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        cpu_results = query_metric(prometheus_url, cpu_query)
+        cpu_value = float(cpu_results[0]["value"][1]) if cpu_results else 0.0
+        memory_value = get_memory_usage(instance)
+        netw_receive_value = get_network_receive_rate(instance)
+        netw_transmit_value = get_network_transmit_rate(instance)
+        load_value = get_node_load_average(instance)
 
-    # Single row; data_formulation() will use the first element of each list
-    rows.append({
-        "timestamp": current_time,
-        "cpu": cpu_value,
-        "mem": memory_value,
-        "network_receive": netw_receive_value,
-        "network_transmit": netw_transmit_value,
-        "load": load_value
-    })
+        rows.append({
+            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            "cpu": cpu_value,
+            "mem": memory_value,
+            "network_receive": netw_receive_value,
+            "network_transmit": netw_transmit_value,
+            "load": load_value
+        })
+
+        time.sleep(interval)
 
     data = {
         "timestamp": [row["timestamp"] for row in rows],
@@ -720,15 +715,73 @@ def gather_metrics_for_30_seconds(node_name, prometheus_url=PROMETHEUS_URL):
     return data
 
 
-def data_formulation(data_flushed: list, path_to_data_file):
-    transformed_data_list = [
-        {
-            key: value[0] if isinstance(value, list) and len(value) > 0 else None
-            for key, value in dic.items()
-        }
-        for dic in data_flushed
-    ]
+def trim_csv_to_last_n_rows(csv_file, keep_last_n=300):
+    """
+    Keep the CSV header and only the last `keep_last_n` data rows.
+    """
+    if not os.path.exists(csv_file):
+        return
 
+    with open(csv_file, mode='r', newline='') as file:
+        reader = list(csv.reader(file))
+        if not reader:
+            return
+
+    header = reader[0]
+    rows = reader[1:]
+
+    if len(rows) <= keep_last_n:
+        return
+
+    trimmed_rows = rows[-keep_last_n:]
+
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(header)
+        writer.writerows(trimmed_rows)
+
+    print(f"Trimmed '{csv_file}' to last {keep_last_n} rows.", flush=True)
+
+def data_formulation(data_flushed: list, path_to_data_file):
+    """
+    Expand each collected batch into one CSV row per timestamp.
+    """
+    transformed_data_list = []
+
+    for dic in data_flushed:
+        if not dic:
+            continue
+
+        timestamps = dic.get("timestamp", [])
+        cpus = dic.get("cpu", [])
+        mems = dic.get("mem", [])
+        net_rx = dic.get("network_receive", [])
+        net_tx = dic.get("network_transmit", [])
+        loads = dic.get("load", [])
+
+        row_count = min(
+            len(timestamps),
+            len(cpus),
+            len(mems),
+            len(net_rx),
+            len(net_tx),
+            len(loads)
+        )
+
+        for i in range(row_count):
+            transformed_data_list.append({
+                "timestamp": timestamps[i],
+                "cpu": cpus[i],
+                "mem": mems[i],
+                "network_receive": net_rx[i],
+                "network_transmit": net_tx[i],
+                "load": loads[i],
+            })
+
+    if not transformed_data_list:
+        return
+
+    os.makedirs(os.path.dirname(path_to_data_file), exist_ok=True)
     file_exists = os.path.isfile(path_to_data_file)
 
     with open(path_to_data_file, mode='a', newline='') as file:
@@ -741,14 +794,17 @@ def data_formulation(data_flushed: list, path_to_data_file):
 
 
 def count_csv_rows(path_to_csv_file):
-    # Open the CSV file and count the number of rows
+    if not os.path.exists(path_to_csv_file):
+        return 0
+
     with open(path_to_csv_file, mode='r', newline='') as file:
         reader = csv.reader(file)
-        # Skip the header row
-        next(reader)
-        
-        # Count the number of rows (excluding the header)
-        row_count = sum(1 for row in reader)
+        try:
+            next(reader)  # skip header
+        except StopIteration:
+            return 0
+
+        row_count = sum(1 for _ in reader)
 
     return row_count
 
@@ -1068,7 +1124,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
     data_formulation(data_flush_list, path_to_data_file)
     row_count = count_csv_rows(path_to_data_file)
 
-    if row_count >= 15:
+    if row_count >= 120:
         df = pd.DataFrame(csv_to_dict(path_to_data_file))
 
         # 🛠️ Preprocess and extract features regardless of iterator
@@ -1091,11 +1147,11 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
             print(f"[DEBUG] Initial training done. Moving to iterator = {iterator}", flush=True)
 
             # ✅ Important: do NOT touch mse/rmse/r2 here; we don't have them yet
-            clear_csv_content(path_to_data_file)
+            trim_csv_to_last_n_rows(path_to_data_file, keep_last_n=300)
             print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
             print(df, flush=True)
 
-            return iterator  # <-- early exit avoids UnboundLocalError
+            return iterator
 
         # ============================================================
         # From here on: INCREMENTAL + FEDERATED logic (iterator != 0)
@@ -1218,7 +1274,7 @@ def preprocessing(data_flush_list, path_to_data_file, iterator):
             time.sleep(3)
 
         # shared cleanup after incremental processing
-        clear_csv_content(path_to_data_file)
+        trim_csv_to_last_n_rows(path_to_data_file, keep_last_n=300)
         print(f"[INFO]: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} Batch pre-processing completed", flush=True)
         print(df, flush=True)
 
