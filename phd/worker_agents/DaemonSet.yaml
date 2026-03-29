@@ -25,7 +25,7 @@ spec:
                       - cluster-test-worker3
       containers:
         - name: name-node-container
-          image: pepi1989/revision-agent:latest
+          image: pepi1989/revision-agent:v27
           imagePullPolicy: Always
           env:
             - name: POD_NAME
