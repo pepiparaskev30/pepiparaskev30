@@ -33,8 +33,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY utilities.py main.py \
     LSTM_attention_model_training.py \
     GRU_Controller_training.py \
-    elasticweightconsolidation.py evaluation_metrics.py /app/
+    metrics_collection.py \
+    elasticweightconsolidation.py evaluation_metrics.py /app/ 
+    
 
 
 # Set the entry point to the shell script
-CMD ["python", "main.py"]
+CMD ["python", "metrics_collection.py"]
