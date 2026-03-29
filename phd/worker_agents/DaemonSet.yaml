@@ -11,18 +11,18 @@ spec:
       labels:
         app: node-info
     spec:
-      serviceAccountName: agent-sa  # 🔹 Ensures correct permissions
+      serviceAccountName: agent-sa
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
               - matchExpressions:
-                  - key: custom-label
+                  - key: kubernetes.io/hostname
                     operator: In
                     values:
-                      - "lab-cluster-worker"
-                      - "lab-cluster-worker2"
-
+                      - cluster-test-worker
+                      - cluster-test-worker2
+                      - cluster-test-worker3
       containers:
         - name: name-node-container
           image: pepi1989/revision-agent:latest
